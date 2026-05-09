@@ -9,8 +9,8 @@ pub enum Role {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub role: Role,
-    pub server: ServerConfig,
-    pub client: ClientConfig,
+    pub server: Option<ServerConfig>,
+    pub client: Option<ClientConfig>,
     pub session: SessionConfig,
 }
 
