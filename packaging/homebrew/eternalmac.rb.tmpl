@@ -1,0 +1,15 @@
+class Eternalmac < Formula
+  desc "Turn a Mac Mini into a personal devserver"
+  homepage "https://github.com/dhruvil009/eternalMac"
+  version "{{ .Version }}"
+  url "{{ .URL }}"
+  sha256 "{{ .SHA256 }}"
+
+  def install
+    bin.install "eternalMac"
+  end
+
+  test do
+    assert_match "Turn a Mac Mini into a personal devserver", shell_output("#{bin}/eternalMac --help")
+  end
+end
