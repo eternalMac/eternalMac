@@ -6,12 +6,17 @@ use eternalmac::tooling::tmux::parse_sessions;
 fn brew_install_args_split_formulae_and_casks() {
     assert_eq!(
         install_formula_args(&["et".into(), "tmux".into()]),
-        vec!["install", "et", "tmux"]
+        Some(vec!["install".into(), "et".into(), "tmux".into()])
     );
     assert_eq!(
         install_cask_args("tailscale-app"),
         vec!["install", "--cask", "tailscale-app"]
     );
+}
+
+#[test]
+fn brew_install_args_reject_empty_formula_lists() {
+    assert_eq!(install_formula_args(&[]), None);
 }
 
 #[test]

@@ -7,7 +7,7 @@ fn server_plan_has_default_session_and_brew_tools() {
     assert_eq!(plan.default_session, "default");
     assert_eq!(
         plan.brew_packages,
-        vec!["et", "tmux", "mutagen", "tailscale"]
+        vec!["et", "tmux", "mutagen", "tailscale-app"]
     );
 }
 

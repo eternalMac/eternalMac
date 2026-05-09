@@ -15,7 +15,7 @@ pub fn build_server_plan(host_label: &str) -> ServerPlan {
             "et".into(),
             "tmux".into(),
             "mutagen".into(),
-            "tailscale".into(),
+            "tailscale-app".into(),
         ],
     }
 }

@@ -13,7 +13,7 @@ pub fn build_client_plan(server: &str) -> ClientPlan {
             "et".into(),
             "tmux".into(),
             "mutagen".into(),
-            "tailscale".into(),
+            "tailscale-app".into(),
         ],
     }
 }
