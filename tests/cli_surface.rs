@@ -35,6 +35,27 @@ fn subcommand_help_is_descriptive() {
         .assert()
         .success()
         .stdout(contains("Manage sync pairs"));
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .args(["session", "new", "--help"])
+        .assert()
+        .success()
+        .stdout(contains("Create a new session"));
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .args(["sync", "add", "--help"])
+        .assert()
+        .success()
+        .stdout(contains("Add a sync pair"));
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .args(["daemon", "server", "--help"])
+        .assert()
+        .success()
+        .stdout(contains("Start the daemon server"));
 }
 
 #[test]

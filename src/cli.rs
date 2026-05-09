@@ -46,14 +46,19 @@ enum Command {
 
 #[derive(Debug, Subcommand)]
 enum SessionAction {
+    #[command(about = "List sessions")]
     List,
+    #[command(about = "Create a new session")]
     New { name: String },
+    #[command(about = "Pin a session")]
     Pin { name: String },
+    #[command(about = "Unpin a session")]
     Unpin { name: String },
 }
 
 #[derive(Debug, Subcommand)]
 enum SyncAction {
+    #[command(about = "Add a sync pair")]
     Add {
         name: String,
         #[arg(long)]
@@ -61,13 +66,17 @@ enum SyncAction {
         #[arg(long)]
         remote: String,
     },
+    #[command(about = "List sync pairs")]
     List,
+    #[command(about = "Show sync status")]
     Status,
 }
 
 #[derive(Debug, Subcommand)]
 enum DaemonAction {
+    #[command(about = "Start the daemon server")]
     Server,
+    #[command(about = "Start the daemon client")]
     Client,
 }
 
