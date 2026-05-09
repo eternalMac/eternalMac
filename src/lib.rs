@@ -6,6 +6,10 @@ pub mod commands;
 pub mod config {
     pub mod store;
 }
+pub mod daemon {
+    pub mod client;
+    pub mod server;
+}
 pub mod model {
     pub mod config;
     pub mod state;
@@ -16,10 +20,15 @@ pub mod platform {
 pub mod process {
     pub mod runner;
 }
+pub mod session {
+    pub mod service;
+}
 pub mod setup {
     pub mod client;
     pub mod server;
 }
 pub mod tooling {
     pub mod dependencies;
+    pub mod et;
+    pub mod tmux;
 }
