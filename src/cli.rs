@@ -13,23 +13,30 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    #[command(about = "Configure the server or client")]
     Setup {
         #[command(subcommand)]
         target: SetupCommand,
     },
+    #[command(about = "Attach to a session")]
     Attach {
         session: Option<String>,
     },
+    #[command(about = "Show the current server status")]
     Status,
+    #[command(about = "Run health checks on the local machine")]
     Doctor,
+    #[command(about = "Manage sessions")]
     Session {
         #[command(subcommand)]
         action: SessionAction,
     },
+    #[command(about = "Manage sync pairs")]
     Sync {
         #[command(subcommand)]
         action: SyncAction,
     },
+    #[command(about = "Run daemon commands")]
     #[command(hide = true)]
     Daemon {
         #[command(subcommand)]
