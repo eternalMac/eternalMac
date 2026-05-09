@@ -20,10 +20,6 @@ fn attach_args_quote_session_names_with_spaces() {
 fn attach_args_escape_single_quotes_in_session_names() {
     assert_eq!(
         build_attach_args("mac-mini", "dhruvil's session"),
-        vec![
-            "mac-mini",
-            "-c",
-            "tmux attach -t 'dhruvil'\\''s session'"
-        ]
+        vec!["mac-mini", "-c", "tmux attach -t 'dhruvil'\\''s session'"]
     );
 }

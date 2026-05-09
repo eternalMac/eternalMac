@@ -9,7 +9,11 @@ fn top_level_help_hides_daemon_command() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(contains("Usage: eternalMac").and(contains("attach")).and(contains("session")))
+        .stdout(
+            contains("Usage: eternalMac")
+                .and(contains("attach"))
+                .and(contains("session")),
+        )
         .stdout(predicates::str::contains("daemon").not());
 }
 

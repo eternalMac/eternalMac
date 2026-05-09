@@ -21,16 +21,14 @@ fn plist_render_includes_label_and_program() {
 fn plist_render_escapes_xml_in_label_and_program_arguments() {
     let xml = render(&Definition {
         label: "com.eternalmac.server&<>'\"".into(),
-        program_arguments: vec![
-            "arg&one".into(),
-            "arg<two>".into(),
-            "arg'three'\"".into(),
-        ],
+        program_arguments: vec!["arg&one".into(), "arg<two>".into(), "arg'three'\"".into()],
         run_at_load: true,
         keep_alive: false,
     });
 
-    assert!(xml.contains("<key>Label</key><string>com.eternalmac.server&amp;&lt;&gt;&apos;&quot;</string>"));
+    assert!(xml.contains(
+        "<key>Label</key><string>com.eternalmac.server&amp;&lt;&gt;&apos;&quot;</string>"
+    ));
     assert!(xml.contains("<string>arg&amp;one</string>"));
     assert!(xml.contains("<string>arg&lt;two&gt;</string>"));
     assert!(xml.contains("<string>arg&apos;three&apos;&quot;</string>"));

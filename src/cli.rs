@@ -19,9 +19,7 @@ enum Command {
         target: SetupCommand,
     },
     #[command(about = "Attach to a session")]
-    Attach {
-        session: Option<String>,
-    },
+    Attach { session: Option<String> },
     #[command(about = "Show the current server status")]
     Status,
     #[command(about = "Run health checks on the local machine")]
@@ -105,11 +103,12 @@ pub fn run() -> Result<()> {
             action: SessionAction::Unpin { name },
         }) => session::unpin_session(&name),
         Some(Command::Sync {
-            action: SyncAction::Add {
-                name,
-                local,
-                remote,
-            },
+            action:
+                SyncAction::Add {
+                    name,
+                    local,
+                    remote,
+                },
         }) => sync::add(&name, &local, &remote),
         Some(Command::Sync {
             action: SyncAction::List,
