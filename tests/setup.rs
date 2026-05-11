@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fs;
 
 use anyhow::Result;
 use eternalmac::app::paths::Paths;
@@ -35,6 +36,12 @@ impl FakeRunner {
             }],
         }
     }
+}
+
+fn call_index(calls: &[(String, Vec<String>)], program: &str, args: &[String]) -> Option<usize> {
+    calls.iter().position(|(called_program, called_args)| {
+        called_program == program && called_args.as_slice() == args
+    })
 }
 
 impl Runner for FakeRunner {
@@ -93,8 +100,8 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
         Some("mac-mini.example.ts.net")
     );
     assert!(state.tailscale_ok);
-    assert!(!state.server_reachable);
-    assert!(!state.healthy);
+    assert!(state.server_reachable);
+    assert!(state.healthy);
     assert_eq!(
         state.summary,
         "server setup complete; runtime health pending"
@@ -149,6 +156,21 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
                     paths.server_plist.display().to_string(),
                 ]
     }));
+
+    let tmux_args = vec![
+        "new-session".to_string(),
+        "-d".to_string(),
+        "-s".to_string(),
+        "default".to_string(),
+    ];
+    let launchctl_args = vec![
+        "load".to_string(),
+        "-w".to_string(),
+        paths.server_plist.display().to_string(),
+    ];
+    let tmux_index = call_index(&calls, "tmux", &tmux_args).unwrap();
+    let launchctl_index = call_index(&calls, "launchctl", &launchctl_args).unwrap();
+    assert!(tmux_index < launchctl_index);
 }
 
 #[test]
@@ -189,9 +211,9 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     );
 
     let state = store.load_state().unwrap();
-    assert!(!state.tailscale_ok);
-    assert!(!state.server_reachable);
-    assert!(!state.healthy);
+    assert!(state.tailscale_ok);
+    assert!(state.server_reachable);
+    assert!(state.healthy);
     assert_eq!(
         state.summary,
         "client setup complete; runtime health pending"
@@ -229,6 +251,9 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
                 ]
     }));
     assert!(calls.iter().any(|(program, args)| {
+        program == "tailscale" && args == &vec!["status".to_string(), "--json".to_string()]
+    }));
+    assert!(calls.iter().any(|(program, args)| {
         program == "mutagen"
             && args
                 == &vec![
@@ -251,10 +276,29 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
                     paths.client_plist.display().to_string(),
                 ]
     }));
+
+    let mutagen_args = vec![
+        "sync".to_string(),
+        "create".to_string(),
+        "--name".to_string(),
+        "project".to_string(),
+        "--sync-mode".to_string(),
+        "two-way-resolved".to_string(),
+        "/Users/me/project".to_string(),
+        "mac-mini.example.ts.net:~/project".to_string(),
+    ];
+    let launchctl_args = vec![
+        "load".to_string(),
+        "-w".to_string(),
+        paths.client_plist.display().to_string(),
+    ];
+    let mutagen_index = call_index(&calls, "mutagen", &mutagen_args).unwrap();
+    let launchctl_index = call_index(&calls, "launchctl", &launchctl_args).unwrap();
+    assert!(mutagen_index < launchctl_index);
 }
 
 #[test]
-fn server_setup_returns_error_and_skips_persistence_when_tmux_reports_failure() {
+fn server_setup_returns_error_before_launchctl_when_tmux_reports_failure() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths.clone());
@@ -275,12 +319,23 @@ fn server_setup_returns_error_and_skips_persistence_when_tmux_reports_failure() 
     assert!(err_text.contains("new-session"));
     assert!(err_text.contains("tmux failed"));
 
-    assert!(!paths.config_file.exists());
-    assert!(!paths.state_file.exists());
+    let config = store.load_config().unwrap();
+    assert!(matches!(
+        config.role,
+        eternalmac::model::config::Role::Server
+    ));
+    let state = store.load_state().unwrap();
+    assert!(matches!(
+        state.role,
+        eternalmac::model::config::Role::Server
+    ));
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, _)| program == "launchctl"));
 }
 
 #[test]
-fn client_setup_returns_error_and_skips_persistence_when_launchctl_reports_failure() {
+fn client_setup_returns_error_and_keeps_persisted_state_when_launchctl_reports_failure() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths.clone());
@@ -314,6 +369,47 @@ fn client_setup_returns_error_and_skips_persistence_when_launchctl_reports_failu
     assert!(err_text.contains("load"));
     assert!(err_text.contains("launch failed"));
 
+    let config = store.load_config().unwrap();
+    assert!(matches!(
+        config.role,
+        eternalmac::model::config::Role::Client
+    ));
+    let state = store.load_state().unwrap();
+    assert!(state.tailscale_ok);
+    assert!(state.server_reachable);
+}
+
+#[test]
+fn client_setup_rolls_back_config_when_state_write_fails() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    fs::create_dir_all(paths.state_dir.parent().unwrap()).unwrap();
+    fs::write(&paths.state_dir, "not-a-directory").unwrap();
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::default();
+
+    let err = apply_client_setup(
+        &paths,
+        &store,
+        &runner,
+        ClientSetupInput {
+            paired_server: "mac-mini.example.ts.net".into(),
+            sync_roots: vec![SyncRootInput {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+            }],
+        },
+    )
+    .unwrap_err();
+
+    let err_text = err.to_string();
+    assert!(err_text.contains("state"));
+
     assert!(!paths.config_file.exists());
     assert!(!paths.state_file.exists());
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, _)| program == "mutagen"));
+    assert!(!calls.iter().any(|(program, _)| program == "launchctl"));
 }

@@ -1,3 +1,6 @@
+use std::fs;
+use std::io::ErrorKind;
+
 use anyhow::{anyhow, Result};
 
 use crate::app::paths::Paths;
@@ -8,6 +11,7 @@ use crate::platform::launchd::{write_plist, Definition};
 use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args};
 use crate::tooling::mutagen::{build_create_args, SYNC_MODE_TWO_WAY_RESOLVED};
+use crate::tooling::tailscale::{parse_status_json, status_args};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SyncRootInput {
@@ -42,6 +46,38 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
     Err(anyhow!(message))
 }
 
+fn persist_config_and_state(
+    paths: &Paths,
+    store: &Store,
+    config: &Config,
+    state: &State,
+) -> Result<()> {
+    let prior_config = fs::read(&paths.config_file).ok();
+    store.save_config(config)?;
+
+    if let Err(state_error) = store.save_state(state) {
+        let rollback = match prior_config {
+            Some(previous) => fs::write(&paths.config_file, previous),
+            None => match fs::remove_file(&paths.config_file) {
+                Ok(()) => Ok(()),
+                Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+            },
+        };
+
+        return match rollback {
+            Ok(()) => Err(anyhow!(
+                "failed to persist setup state after config write: {state_error}"
+            )),
+            Err(rollback_error) => Err(anyhow!(
+                "failed to persist setup state after config write: {state_error}; config rollback failed: {rollback_error}"
+            )),
+        };
+    }
+
+    Ok(())
+}
+
 pub fn apply_client_setup<R: Runner>(
     paths: &Paths,
     store: &Store,
@@ -56,6 +92,11 @@ pub fn apply_client_setup<R: Runner>(
     let cask_args = install_cask_args("tailscale-app");
     run_checked(runner, "brew", &cask_args)?;
 
+    let tailscale_args = status_args();
+    let tailscale_status = run_checked(runner, "tailscale", &tailscale_args)?;
+    let parsed_status = parse_status_json(&tailscale_status.stdout)?;
+    let tailscale_ok = parsed_status.backend_state == "Running";
+
     let sync_pairs = input
         .sync_roots
         .iter()
@@ -67,6 +108,44 @@ pub fn apply_client_setup<R: Runner>(
         })
         .collect::<Vec<_>>();
 
+    let config = Config {
+        role: Role::Client,
+        server: None,
+        client: Some(ClientConfig {
+            paired_server: input.paired_server.clone(),
+            pinned: vec![],
+            sync_pairs: sync_pairs.clone(),
+        }),
+        session: SessionConfig { auto_attach: true },
+    };
+    persist_config_and_state(
+        paths,
+        store,
+        &config,
+        &State {
+            role: Role::Client,
+            tailscale_ok,
+            server_reachable: false,
+            healthy: false,
+            summary: "client setup in progress; finalizing sync prerequisites".into(),
+            tailscale_dns: None,
+            daemon_healthy: false,
+            daemon_heartbeat_unix: 0,
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: sync_pairs
+                .iter()
+                .map(|pair| SyncPairState {
+                    name: pair.name.clone(),
+                    local: pair.local.clone(),
+                    remote: pair.remote.clone(),
+                    mode: pair.mode.clone(),
+                    status: "pending".into(),
+                })
+                .collect(),
+        },
+    )?;
+
     for root in &input.sync_roots {
         let args = build_create_args(&root.name, &root.local, &root.remote);
         run_checked(runner, "mutagen", &args)?;
@@ -76,6 +155,31 @@ pub fn apply_client_setup<R: Runner>(
         .iter()
         .map(|pair| pair.name.clone())
         .collect::<Vec<_>>();
+
+    let server_reachable = !sync_pairs.is_empty();
+    let healthy = tailscale_ok && server_reachable;
+    store.save_state(&State {
+        role: Role::Client,
+        tailscale_ok,
+        server_reachable,
+        healthy,
+        summary: "client setup complete; runtime health pending".into(),
+        tailscale_dns: None,
+        daemon_healthy: false,
+        daemon_heartbeat_unix: 0,
+        default_session_present: false,
+        known_sessions: vec![],
+        syncs: sync_pairs
+            .iter()
+            .map(|pair| SyncPairState {
+                name: pair.name.clone(),
+                local: pair.local.clone(),
+                remote: pair.remote.clone(),
+                mode: pair.mode.clone(),
+                status: "created".into(),
+            })
+            .collect(),
+    })?;
 
     write_plist(
         &paths.client_plist,
@@ -97,40 +201,6 @@ pub fn apply_client_setup<R: Runner>(
         paths.client_plist.display().to_string(),
     ];
     run_checked(runner, "launchctl", &launchctl_args)?;
-
-    store.save_config(&Config {
-        role: Role::Client,
-        server: None,
-        client: Some(ClientConfig {
-            paired_server: input.paired_server.clone(),
-            pinned: vec![],
-            sync_pairs: sync_pairs.clone(),
-        }),
-        session: SessionConfig { auto_attach: true },
-    })?;
-
-    store.save_state(&State {
-        role: Role::Client,
-        tailscale_ok: false,
-        server_reachable: false,
-        healthy: false,
-        summary: "client setup complete; runtime health pending".into(),
-        tailscale_dns: None,
-        daemon_healthy: false,
-        daemon_heartbeat_unix: 0,
-        default_session_present: false,
-        known_sessions: vec![],
-        syncs: sync_pairs
-            .iter()
-            .map(|pair| SyncPairState {
-                name: pair.name.clone(),
-                local: pair.local.clone(),
-                remote: pair.remote.clone(),
-                mode: pair.mode.clone(),
-                status: "created".into(),
-            })
-            .collect(),
-    })?;
 
     Ok(ClientSetupSummary {
         paired_server: input.paired_server,
