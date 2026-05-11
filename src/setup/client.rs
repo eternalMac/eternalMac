@@ -1,11 +1,11 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
 use crate::app::paths::Paths;
 use crate::config::store::Store;
 use crate::model::config::{ClientConfig, Config, Role, SessionConfig, SyncPairConfig};
 use crate::model::state::{State, SyncPairState};
 use crate::platform::launchd::{write_plist, Definition};
-use crate::process::runner::Runner;
+use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args};
 use crate::tooling::mutagen::{build_create_args, SYNC_MODE_TWO_WAY_RESOLVED};
 
@@ -28,6 +28,20 @@ pub struct ClientSetupSummary {
     pub sync_names: Vec<String>,
 }
 
+fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
+    let output = runner.run(program, args)?;
+    if output.success {
+        return Ok(output);
+    }
+
+    let mut message = format!("command failed: {program} {}", args.join(" "));
+    if !output.stderr.trim().is_empty() {
+        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
+    }
+
+    Err(anyhow!(message))
+}
+
 pub fn apply_client_setup<R: Runner>(
     paths: &Paths,
     store: &Store,
@@ -36,11 +50,11 @@ pub fn apply_client_setup<R: Runner>(
 ) -> Result<ClientSetupSummary> {
     let formulae = vec!["et".into(), "tmux".into(), "mutagen".into()];
     if let Some(args) = install_formula_args(&formulae) {
-        runner.run("brew", &args)?;
+        run_checked(runner, "brew", &args)?;
     }
 
     let cask_args = install_cask_args("tailscale-app");
-    runner.run("brew", &cask_args)?;
+    run_checked(runner, "brew", &cask_args)?;
 
     let sync_pairs = input
         .sync_roots
@@ -55,47 +69,13 @@ pub fn apply_client_setup<R: Runner>(
 
     for root in &input.sync_roots {
         let args = build_create_args(&root.name, &root.local, &root.remote);
-        runner.run("mutagen", &args)?;
+        run_checked(runner, "mutagen", &args)?;
     }
 
     let sync_names = sync_pairs
         .iter()
         .map(|pair| pair.name.clone())
         .collect::<Vec<_>>();
-
-    store.save_config(&Config {
-        role: Role::Client,
-        server: None,
-        client: Some(ClientConfig {
-            paired_server: input.paired_server.clone(),
-            pinned: vec![],
-            sync_pairs: sync_pairs.clone(),
-        }),
-        session: SessionConfig { auto_attach: true },
-    })?;
-
-    store.save_state(&State {
-        role: Role::Client,
-        tailscale_ok: true,
-        server_reachable: true,
-        healthy: true,
-        summary: "client ready".into(),
-        tailscale_dns: None,
-        daemon_healthy: true,
-        daemon_heartbeat_unix: 0,
-        default_session_present: false,
-        known_sessions: vec![],
-        syncs: sync_pairs
-            .iter()
-            .map(|pair| SyncPairState {
-                name: pair.name.clone(),
-                local: pair.local.clone(),
-                remote: pair.remote.clone(),
-                mode: pair.mode.clone(),
-                status: "created".into(),
-            })
-            .collect(),
-    })?;
 
     write_plist(
         &paths.client_plist,
@@ -116,7 +96,41 @@ pub fn apply_client_setup<R: Runner>(
         "-w".into(),
         paths.client_plist.display().to_string(),
     ];
-    runner.run("launchctl", &launchctl_args)?;
+    run_checked(runner, "launchctl", &launchctl_args)?;
+
+    store.save_config(&Config {
+        role: Role::Client,
+        server: None,
+        client: Some(ClientConfig {
+            paired_server: input.paired_server.clone(),
+            pinned: vec![],
+            sync_pairs: sync_pairs.clone(),
+        }),
+        session: SessionConfig { auto_attach: true },
+    })?;
+
+    store.save_state(&State {
+        role: Role::Client,
+        tailscale_ok: false,
+        server_reachable: false,
+        healthy: false,
+        summary: "client setup complete; runtime health pending".into(),
+        tailscale_dns: None,
+        daemon_healthy: false,
+        daemon_heartbeat_unix: 0,
+        default_session_present: false,
+        known_sessions: vec![],
+        syncs: sync_pairs
+            .iter()
+            .map(|pair| SyncPairState {
+                name: pair.name.clone(),
+                local: pair.local.clone(),
+                remote: pair.remote.clone(),
+                mode: pair.mode.clone(),
+                status: "created".into(),
+            })
+            .collect(),
+    })?;
 
     Ok(ClientSetupSummary {
         paired_server: input.paired_server,

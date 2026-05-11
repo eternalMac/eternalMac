@@ -7,9 +7,34 @@ use eternalmac::process::runner::{Output, Runner};
 use eternalmac::setup::client::{apply_client_setup, ClientSetupInput, SyncRootInput};
 use eternalmac::setup::server::apply_server_setup;
 
+#[derive(Debug, Clone)]
+struct Stub {
+    program: String,
+    args: Vec<String>,
+    output: Output,
+}
+
 #[derive(Default)]
 struct FakeRunner {
     calls: RefCell<Vec<(String, Vec<String>)>>,
+    stubs: Vec<Stub>,
+}
+
+impl FakeRunner {
+    fn with_failure(program: &str, args: Vec<String>, stderr: &str) -> Self {
+        Self {
+            calls: RefCell::new(vec![]),
+            stubs: vec![Stub {
+                program: program.to_string(),
+                args,
+                output: Output {
+                    stdout: String::new(),
+                    stderr: stderr.to_string(),
+                    success: false,
+                },
+            }],
+        }
+    }
 }
 
 impl Runner for FakeRunner {
@@ -17,6 +42,14 @@ impl Runner for FakeRunner {
         self.calls
             .borrow_mut()
             .push((program.to_string(), args.to_vec()));
+
+        if let Some(stub) = self
+            .stubs
+            .iter()
+            .find(|stub| stub.program == program && stub.args == args)
+        {
+            return Ok(stub.output.clone());
+        }
 
         let stdout = match (program, args.first().map(String::as_str)) {
             ("tailscale", Some("status")) => {
@@ -59,7 +92,14 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
         state.tailscale_dns.as_deref(),
         Some("mac-mini.example.ts.net")
     );
-    assert_eq!(state.summary, "server ready");
+    assert!(state.tailscale_ok);
+    assert!(!state.server_reachable);
+    assert!(!state.healthy);
+    assert_eq!(
+        state.summary,
+        "server setup complete; runtime health pending"
+    );
+    assert!(!state.daemon_healthy);
     assert_eq!(state.known_sessions, vec!["default"]);
     assert!(state.default_session_present);
 
@@ -149,7 +189,14 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     );
 
     let state = store.load_state().unwrap();
-    assert_eq!(state.summary, "client ready");
+    assert!(!state.tailscale_ok);
+    assert!(!state.server_reachable);
+    assert!(!state.healthy);
+    assert_eq!(
+        state.summary,
+        "client setup complete; runtime health pending"
+    );
+    assert!(!state.daemon_healthy);
     assert_eq!(state.syncs.len(), 1);
     assert_eq!(state.syncs[0].name, "project");
     assert_eq!(state.syncs[0].local, "/Users/me/project");
@@ -204,4 +251,69 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
                     paths.client_plist.display().to_string(),
                 ]
     }));
+}
+
+#[test]
+fn server_setup_returns_error_and_skips_persistence_when_tmux_reports_failure() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "tmux",
+        vec![
+            "new-session".to_string(),
+            "-d".to_string(),
+            "-s".to_string(),
+            "default".to_string(),
+        ],
+        "tmux failed",
+    );
+
+    let err = apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap_err();
+    let err_text = err.to_string();
+    assert!(err_text.contains("tmux"));
+    assert!(err_text.contains("new-session"));
+    assert!(err_text.contains("tmux failed"));
+
+    assert!(!paths.config_file.exists());
+    assert!(!paths.state_file.exists());
+}
+
+#[test]
+fn client_setup_returns_error_and_skips_persistence_when_launchctl_reports_failure() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "launchctl",
+        vec![
+            "load".to_string(),
+            "-w".to_string(),
+            paths.client_plist.display().to_string(),
+        ],
+        "launch failed",
+    );
+
+    let err = apply_client_setup(
+        &paths,
+        &store,
+        &runner,
+        ClientSetupInput {
+            paired_server: "mac-mini.example.ts.net".into(),
+            sync_roots: vec![SyncRootInput {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+            }],
+        },
+    )
+    .unwrap_err();
+
+    let err_text = err.to_string();
+    assert!(err_text.contains("launchctl"));
+    assert!(err_text.contains("load"));
+    assert!(err_text.contains("launch failed"));
+
+    assert!(!paths.config_file.exists());
+    assert!(!paths.state_file.exists());
 }
