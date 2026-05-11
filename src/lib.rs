@@ -29,6 +29,7 @@ pub mod sync {
 }
 pub mod setup {
     pub mod client;
+    pub mod prompts;
     pub mod server;
 }
 pub mod tooling {

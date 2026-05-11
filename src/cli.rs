@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::commands::{attach, daemon, doctor, session, setup::SetupCommand, status, sync};
+use crate::commands::{attach, daemon, doctor, session, setup, setup::SetupCommand, status, sync};
 
 #[derive(Debug, Parser)]
 #[command(name = "eternalMac")]
@@ -83,25 +83,46 @@ pub fn run() -> Result<()> {
     match cli.command {
         Some(Command::Setup {
             target: SetupCommand::Server,
-        }) => println!("server plan ready for mac-mini"),
+        }) => setup::run_server(),
         Some(Command::Setup {
             target: SetupCommand::Client { server },
-        }) => println!("client plan ready for {server}"),
-        Some(Command::Attach { session }) => attach::run(session.as_deref()),
-        Some(Command::Status) => status::run(),
-        Some(Command::Doctor) => doctor::run(),
+        }) => setup::run_client(server),
+        Some(Command::Attach { session }) => {
+            attach::run(session.as_deref());
+            Ok(())
+        }
+        Some(Command::Status) => {
+            status::run();
+            Ok(())
+        }
+        Some(Command::Doctor) => {
+            doctor::run();
+            Ok(())
+        }
         Some(Command::Session {
             action: SessionAction::List,
-        }) => session::list(),
+        }) => {
+            session::list();
+            Ok(())
+        }
         Some(Command::Session {
             action: SessionAction::New { name },
-        }) => session::create(&name),
+        }) => {
+            session::create(&name);
+            Ok(())
+        }
         Some(Command::Session {
             action: SessionAction::Pin { name },
-        }) => session::pin_session(&name),
+        }) => {
+            session::pin_session(&name);
+            Ok(())
+        }
         Some(Command::Session {
             action: SessionAction::Unpin { name },
-        }) => session::unpin_session(&name),
+        }) => {
+            session::unpin_session(&name);
+            Ok(())
+        }
         Some(Command::Sync {
             action:
                 SyncAction::Add {
@@ -109,24 +130,39 @@ pub fn run() -> Result<()> {
                     local,
                     remote,
                 },
-        }) => sync::add(&name, &local, &remote),
+        }) => {
+            sync::add(&name, &local, &remote);
+            Ok(())
+        }
         Some(Command::Sync {
             action: SyncAction::List,
-        }) => sync::list(),
+        }) => {
+            sync::list();
+            Ok(())
+        }
         Some(Command::Sync {
             action: SyncAction::Status,
-        }) => sync::status(),
+        }) => {
+            sync::status();
+            Ok(())
+        }
         Some(Command::Daemon {
             target: DaemonAction::Server,
-        }) => daemon::run_server(),
+        }) => {
+            daemon::run_server();
+            Ok(())
+        }
         Some(Command::Daemon {
             target: DaemonAction::Client,
-        }) => daemon::run_client(),
+        }) => {
+            daemon::run_client();
+            Ok(())
+        }
         None => {
             use clap::CommandFactory;
             Cli::command().print_help()?;
             println!();
+            Ok(())
         }
     }
-    Ok(())
 }

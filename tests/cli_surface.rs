@@ -63,6 +63,28 @@ fn subcommand_help_is_descriptive() {
 }
 
 #[test]
+fn setup_help_mentions_server_and_client_targets() {
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .args(["setup", "--help"])
+        .assert()
+        .success()
+        .stdout(contains("server").and(contains("client")));
+}
+
+#[test]
+fn setup_client_help_keeps_server_override_optional() {
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .args(["setup", "client", "--help"])
+        .assert()
+        .success()
+        .stdout(
+            contains("Usage: eternalMac setup client [OPTIONS]").and(contains("--server <SERVER>")),
+        );
+}
+
+#[test]
 fn attach_routes_to_existing_output() {
     Command::cargo_bin("eternalMac")
         .unwrap()
