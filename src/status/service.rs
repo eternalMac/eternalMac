@@ -17,6 +17,7 @@ pub enum StatusLoad {
     Ready(StatusSnapshot),
     ConfigMissing,
     StateMissing { config: Config },
+    RoleMismatch { config_role: Role, state_role: Role },
 }
 
 pub fn load(store: &Store) -> Result<StatusLoad> {
@@ -32,6 +33,13 @@ pub fn load(store: &Store) -> Result<StatusLoad> {
         Err(error) => return Err(error),
     };
 
+    if !roles_match(&config.role, &state.role) {
+        return Ok(StatusLoad::RoleMismatch {
+            config_role: config.role.clone(),
+            state_role: state.role.clone(),
+        });
+    }
+
     Ok(StatusLoad::Ready(StatusSnapshot { config, state }))
 }
 
@@ -42,7 +50,10 @@ pub fn render_summary(snapshot: &StatusSnapshot) -> String {
         format!("summary: {}", snapshot.state.summary),
         format!("tailscale: {}", yes_no(snapshot.state.tailscale_ok)),
         format!("daemon healthy: {}", yes_no(snapshot.state.daemon_healthy)),
-        format!("server reachable: {}", yes_no(snapshot.state.server_reachable)),
+        format!(
+            "server reachable: {}",
+            yes_no(snapshot.state.server_reachable)
+        ),
     ];
 
     if let Some(dns_name) = snapshot.state.tailscale_dns.as_deref() {
@@ -96,7 +107,11 @@ fn comma_or_none(values: &[String]) -> String {
 }
 
 fn yes_no(flag: bool) -> &'static str {
-    if flag { "yes" } else { "no" }
+    if flag {
+        "yes"
+    } else {
+        "no"
+    }
 }
 
 fn role_name(role: &Role) -> &'static str {
@@ -104,6 +119,13 @@ fn role_name(role: &Role) -> &'static str {
         Role::Server => "server",
         Role::Client => "client",
     }
+}
+
+fn roles_match(config_role: &Role, state_role: &Role) -> bool {
+    matches!(
+        (config_role, state_role),
+        (Role::Server, Role::Server) | (Role::Client, Role::Client)
+    )
 }
 
 fn is_not_found(error: &anyhow::Error) -> bool {

@@ -69,3 +69,51 @@ fn status_renders_persisted_summary_when_configured() {
                 .and(contains("known sessions: default, pair")),
         );
 }
+
+#[test]
+fn status_fails_when_config_and_state_roles_do_not_match() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    store
+        .save_config(&Config {
+            role: Role::Server,
+            server: Some(ServerConfig {
+                host_label: "mac-mini".into(),
+                default_session: "default".into(),
+                boot_sessions: vec!["default".into()],
+                tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            }),
+            client: None,
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "stale client state".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: 1_700_000_000,
+            default_session_present: true,
+            known_sessions: vec!["default".into()],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .env("HOME", tempdir.path())
+        .args(["status"])
+        .assert()
+        .failure()
+        .stderr(
+            contains("status config/state role mismatch")
+                .and(contains("config=server"))
+                .and(contains("state=client"))
+                .and(contains("eternalMac setup server")),
+        );
+}

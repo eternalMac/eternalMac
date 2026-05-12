@@ -19,6 +19,15 @@ pub fn run() -> Result<()> {
             "status requires local state: re-run `eternalMac setup {}` to restore local state",
             setup_target(&config.role)
         )),
+        StatusLoad::RoleMismatch {
+            config_role,
+            state_role,
+        } => Err(anyhow!(
+            "status config/state role mismatch: config={} state={}; re-run `eternalMac setup {}` to restore local state",
+            setup_target(&config_role),
+            setup_target(&state_role),
+            setup_target(&config_role)
+        )),
     }
 }
 

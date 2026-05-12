@@ -155,6 +155,15 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
         program == "launchctl"
             && args
                 == &vec![
+                    "unload".to_string(),
+                    "-w".to_string(),
+                    paths.client_plist.display().to_string(),
+                ]
+    }));
+    assert!(calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
                     "load".to_string(),
                     "-w".to_string(),
                     paths.server_plist.display().to_string(),
@@ -167,13 +176,20 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
         "-s".to_string(),
         "default".to_string(),
     ];
+    let unload_client_args = vec![
+        "unload".to_string(),
+        "-w".to_string(),
+        paths.client_plist.display().to_string(),
+    ];
     let launchctl_args = vec![
         "load".to_string(),
         "-w".to_string(),
         paths.server_plist.display().to_string(),
     ];
     let tmux_index = call_index(&calls, "tmux", &tmux_args).unwrap();
+    let unload_index = call_index(&calls, "launchctl", &unload_client_args).unwrap();
     let launchctl_index = call_index(&calls, "launchctl", &launchctl_args).unwrap();
+    assert!(unload_index < launchctl_index);
     assert!(tmux_index < launchctl_index);
 }
 
@@ -275,6 +291,15 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
         program == "launchctl"
             && args
                 == &vec![
+                    "unload".to_string(),
+                    "-w".to_string(),
+                    paths.server_plist.display().to_string(),
+                ]
+    }));
+    assert!(calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
                     "load".to_string(),
                     "-w".to_string(),
                     paths.client_plist.display().to_string(),
@@ -291,14 +316,181 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
         "/Users/me/project".to_string(),
         "mac-mini.example.ts.net:~/project".to_string(),
     ];
+    let unload_server_args = vec![
+        "unload".to_string(),
+        "-w".to_string(),
+        paths.server_plist.display().to_string(),
+    ];
     let launchctl_args = vec![
         "load".to_string(),
         "-w".to_string(),
         paths.client_plist.display().to_string(),
     ];
     let mutagen_index = call_index(&calls, "mutagen", &mutagen_args).unwrap();
+    let unload_index = call_index(&calls, "launchctl", &unload_server_args).unwrap();
     let launchctl_index = call_index(&calls, "launchctl", &launchctl_args).unwrap();
+    assert!(unload_index < launchctl_index);
     assert!(mutagen_index < launchctl_index);
+}
+
+#[test]
+fn server_setup_fails_when_client_unload_returns_unexpected_error() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "launchctl",
+        vec![
+            "unload".to_string(),
+            "-w".to_string(),
+            paths.client_plist.display().to_string(),
+        ],
+        "permission denied",
+    );
+
+    let err = apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap_err();
+    let err_text = err.to_string();
+    assert!(err_text.contains("launchctl"));
+    assert!(err_text.contains("unload"));
+    assert!(err_text.contains("permission denied"));
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
+                    "load".to_string(),
+                    "-w".to_string(),
+                    paths.server_plist.display().to_string(),
+                ]
+    }));
+}
+
+#[test]
+fn server_setup_ignores_client_unload_not_loaded_error() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_stubs(vec![Stub {
+        program: "launchctl".to_string(),
+        args: vec![
+            "unload".to_string(),
+            "-w".to_string(),
+            paths.client_plist.display().to_string(),
+        ],
+        output: Output {
+            stdout: String::new(),
+            stderr: "Could not find specified service".to_string(),
+            success: false,
+        },
+    }]);
+
+    let summary = apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap();
+    assert_eq!(summary.dns_name, "mac-mini.example.ts.net");
+
+    let calls = runner.calls.borrow();
+    assert!(calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
+                    "load".to_string(),
+                    "-w".to_string(),
+                    paths.server_plist.display().to_string(),
+                ]
+    }));
+}
+
+#[test]
+fn client_setup_fails_when_server_unload_returns_unexpected_error() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "launchctl",
+        vec![
+            "unload".to_string(),
+            "-w".to_string(),
+            paths.server_plist.display().to_string(),
+        ],
+        "permission denied",
+    );
+
+    let err = apply_client_setup(
+        &paths,
+        &store,
+        &runner,
+        ClientSetupInput {
+            paired_server: "mac-mini.example.ts.net".into(),
+            sync_roots: vec![SyncRootInput {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+            }],
+        },
+    )
+    .unwrap_err();
+    let err_text = err.to_string();
+    assert!(err_text.contains("launchctl"));
+    assert!(err_text.contains("unload"));
+    assert!(err_text.contains("permission denied"));
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
+                    "load".to_string(),
+                    "-w".to_string(),
+                    paths.client_plist.display().to_string(),
+                ]
+    }));
+}
+
+#[test]
+fn client_setup_ignores_server_unload_not_loaded_error() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_stubs(vec![Stub {
+        program: "launchctl".to_string(),
+        args: vec![
+            "unload".to_string(),
+            "-w".to_string(),
+            paths.server_plist.display().to_string(),
+        ],
+        output: Output {
+            stdout: String::new(),
+            stderr: "Could not find specified service".to_string(),
+            success: false,
+        },
+    }]);
+
+    let summary = apply_client_setup(
+        &paths,
+        &store,
+        &runner,
+        ClientSetupInput {
+            paired_server: "mac-mini.example.ts.net".into(),
+            sync_roots: vec![SyncRootInput {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+            }],
+        },
+    )
+    .unwrap();
+    assert_eq!(summary.sync_names, vec!["project"]);
+
+    let calls = runner.calls.borrow();
+    assert!(calls.iter().any(|(program, args)| {
+        program == "launchctl"
+            && args
+                == &vec![
+                    "load".to_string(),
+                    "-w".to_string(),
+                    paths.client_plist.display().to_string(),
+                ]
+    }));
 }
 
 #[test]

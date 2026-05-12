@@ -33,6 +33,42 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
     Err(anyhow!(message))
 }
 
+fn is_expected_unload_absence(output: &Output) -> bool {
+    let combined = format!(
+        "{}\n{}",
+        output.stdout.to_lowercase(),
+        output.stderr.to_lowercase()
+    );
+
+    combined.contains("could not find specified service")
+        || combined.contains("could not find service")
+        || combined.contains("not loaded")
+        || combined.contains("no such process")
+        || combined.contains("not found")
+}
+
+fn run_unload_checked<R: Runner>(runner: &R, plist_path: &std::path::Path) -> Result<()> {
+    let args = vec![
+        "unload".into(),
+        "-w".into(),
+        plist_path.display().to_string(),
+    ];
+    let output = runner.run("launchctl", &args)?;
+    if output.success || is_expected_unload_absence(&output) {
+        return Ok(());
+    }
+
+    let mut message = format!("command failed: launchctl {}", args.join(" "));
+    if !output.stderr.trim().is_empty() {
+        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
+    }
+    if !output.stdout.trim().is_empty() {
+        message.push_str(&format!("; stdout: {}", output.stdout.trim()));
+    }
+
+    Err(anyhow!(message))
+}
+
 fn persist_config_and_state(
     paths: &Paths,
     store: &Store,
@@ -143,6 +179,8 @@ pub fn apply_server_setup<R: Runner>(
             keep_alive: true,
         },
     )?;
+
+    run_unload_checked(runner, &paths.client_plist)?;
 
     let launchctl_args = vec![
         "load".into(),
