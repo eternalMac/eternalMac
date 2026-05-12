@@ -33,15 +33,28 @@ pub fn create_with<R: Runner>(runner: &R, name: &str) -> Result<()> {
 pub fn pin_session_with(store: &Store, name: &str) -> Result<Vec<String>> {
     let mut config = store
         .load_config()
-        .context("loading client config for session pin")?;
-    let client = config.client.as_mut().context(
-        "session pin requires client config; run `eternalMac setup client` on this machine first",
-    )?;
-    client.pinned = service::pin(client.pinned.clone(), name);
-    let pinned = client.pinned.clone();
+        .context("loading config for session pin")?;
+    if let Some(server) = config.server.as_mut() {
+        server.boot_sessions = service::pin(server.boot_sessions.clone(), name);
+    }
+    if let Some(client) = config.client.as_mut() {
+        client.pinned = service::pin(client.pinned.clone(), name);
+    }
+
+    let pinned = config
+        .client
+        .as_ref()
+        .map(|client| client.pinned.clone())
+        .or_else(|| {
+            config
+                .server
+                .as_ref()
+                .map(|server| server.boot_sessions.clone())
+        })
+        .unwrap_or_default();
     store
         .save_config(&config)
-        .context("saving client config after session pin")?;
+        .context("saving config after session pin")?;
 
     Ok(pinned)
 }
@@ -49,15 +62,28 @@ pub fn pin_session_with(store: &Store, name: &str) -> Result<Vec<String>> {
 pub fn unpin_session_with(store: &Store, name: &str) -> Result<Vec<String>> {
     let mut config = store
         .load_config()
-        .context("loading client config for session unpin")?;
-    let client = config.client.as_mut().context(
-        "session unpin requires client config; run `eternalMac setup client` on this machine first",
-    )?;
-    client.pinned = service::unpin(client.pinned.clone(), name);
-    let pinned = client.pinned.clone();
+        .context("loading config for session unpin")?;
+    if let Some(server) = config.server.as_mut() {
+        server.boot_sessions = service::unpin(server.boot_sessions.clone(), name);
+    }
+    if let Some(client) = config.client.as_mut() {
+        client.pinned = service::unpin(client.pinned.clone(), name);
+    }
+
+    let pinned = config
+        .client
+        .as_ref()
+        .map(|client| client.pinned.clone())
+        .or_else(|| {
+            config
+                .server
+                .as_ref()
+                .map(|server| server.boot_sessions.clone())
+        })
+        .unwrap_or_default();
     store
         .save_config(&config)
-        .context("saving client config after session unpin")?;
+        .context("saving config after session unpin")?;
 
     Ok(pinned)
 }

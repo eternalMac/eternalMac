@@ -30,12 +30,6 @@ pub fn add_with<R: Runner>(
 ) -> Result<SyncPairConfig> {
     let pair = build_pair(name, local, remote, None);
 
-    run_checked(
-        runner,
-        "mutagen",
-        &build_create_args(&pair.name, &pair.local, &pair.remote),
-    )?;
-
     let mut config = store
         .load_config()
         .context("loading client config for sync add")?;
@@ -63,12 +57,23 @@ pub fn add_with<R: Runner>(
         .save_config(&config)
         .context("saving client config after sync add")?;
 
+    run_checked(
+        runner,
+        "mutagen",
+        &build_create_args(&sync_pair.name, &sync_pair.local, &sync_pair.remote),
+    )?;
+
     Ok(sync_pair)
 }
 
-pub fn list_with<R: Runner>(runner: &R) -> Result<String> {
-    let output = run_checked(runner, "mutagen", &list_args())?;
-    Ok(output.stdout)
+pub fn list_with(store: &Store) -> Result<Vec<SyncPairConfig>> {
+    let config = store
+        .load_config()
+        .context("loading client config for sync list")?;
+    let client = config.client.as_ref().context(
+        "sync list requires client config; run `eternalMac setup client` on this machine first",
+    )?;
+    Ok(client.sync_pairs.clone())
 }
 
 pub fn status_with<R: Runner>(runner: &R) -> Result<String> {
@@ -84,7 +89,9 @@ pub fn add(name: &str, local: &str, remote: &str) -> Result<()> {
 
 pub fn list() -> Result<()> {
     let context = AppContext::from_env()?;
-    print!("{}", list_with(&context.runner)?);
+    for pair in list_with(&context.store)? {
+        println!("{} {} {}", pair.name, pair.local, pair.remote);
+    }
     Ok(())
 }
 

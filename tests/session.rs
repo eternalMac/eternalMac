@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use eternalmac::app::paths::Paths;
 use eternalmac::commands::session::{create_with, list_with, pin_session_with, unpin_session_with};
 use eternalmac::config::store::Store;
-use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig};
+use eternalmac::model::config::{ClientConfig, Config, Role, ServerConfig, SessionConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::session::service::{pin, unpin};
 use eternalmac::tooling::tmux::{list_sessions_args, new_session_args};
@@ -46,12 +46,22 @@ impl Runner for FakeRunner {
     }
 }
 
-fn save_client_config(store: &Store, pinned: Vec<String>) {
+fn save_config(store: &Store, boot_sessions: Option<Vec<String>>, pinned: Option<Vec<String>>) {
+    let role = if boot_sessions.is_some() && pinned.is_none() {
+        Role::Server
+    } else {
+        Role::Client
+    };
     store
         .save_config(&Config {
-            role: Role::Client,
-            server: None,
-            client: Some(ClientConfig {
+            role,
+            server: boot_sessions.map(|boot_sessions| ServerConfig {
+                host_label: "mac-mini".into(),
+                default_session: "default".into(),
+                boot_sessions,
+                tailscale_dns: None,
+            }),
+            client: pinned.map(|pinned| ClientConfig {
                 paired_server: "mac-mini".into(),
                 pinned,
                 sync_pairs: vec![],
@@ -126,7 +136,11 @@ fn session_pin_persists_deduplicated_state() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config(&store, vec!["default".into()]);
+    save_config(
+        &store,
+        Some(vec!["default".into()]),
+        Some(vec!["default".into()]),
+    );
 
     let pinned = pin_session_with(&store, "default").unwrap();
     assert_eq!(pinned, vec!["default"]);
@@ -135,6 +149,10 @@ fn session_pin_persists_deduplicated_state() {
     assert_eq!(pinned, vec!["default", "pairing"]);
 
     let loaded = store.load_config().unwrap();
+    assert_eq!(
+        loaded.server.unwrap().boot_sessions,
+        vec!["default", "pairing"]
+    );
     assert_eq!(loaded.client.unwrap().pinned, vec!["default", "pairing"]);
 }
 
@@ -143,11 +161,33 @@ fn session_unpin_persists_updated_state() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config(&store, vec!["default".into(), "pairing".into()]);
+    save_config(
+        &store,
+        Some(vec!["default".into(), "pairing".into()]),
+        Some(vec!["default".into(), "pairing".into()]),
+    );
 
     let pinned = unpin_session_with(&store, "default").unwrap();
     assert_eq!(pinned, vec!["pairing"]);
 
     let loaded = store.load_config().unwrap();
+    assert_eq!(loaded.server.unwrap().boot_sessions, vec!["pairing"]);
     assert_eq!(loaded.client.unwrap().pinned, vec!["pairing"]);
+}
+
+#[test]
+fn session_pin_updates_server_when_client_config_missing() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, Some(vec!["default".into()]), None);
+
+    pin_session_with(&store, "pairing").unwrap();
+
+    let loaded = store.load_config().unwrap();
+    assert_eq!(
+        loaded.server.unwrap().boot_sessions,
+        vec!["default", "pairing"]
+    );
+    assert!(loaded.client.is_none());
 }

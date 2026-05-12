@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use eternalmac::app::paths::Paths;
 use eternalmac::commands::sync::{add_with, list_with, status_with};
 use eternalmac::config::store::Store;
-use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig};
+use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig, SyncPairConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::sync::service::build_pair;
 use eternalmac::tooling::mutagen::{build_create_args, list_args, SYNC_MODE_TWO_WAY_RESOLVED};
@@ -46,7 +46,7 @@ impl Runner for FakeRunner {
     }
 }
 
-fn save_client_config(store: &Store) {
+fn save_client_config(store: &Store, sync_pairs: Vec<SyncPairConfig>) {
     store
         .save_config(&Config {
             role: Role::Client,
@@ -54,7 +54,7 @@ fn save_client_config(store: &Store) {
             client: Some(ClientConfig {
                 paired_server: "mac-mini".into(),
                 pinned: vec![],
-                sync_pairs: vec![],
+                sync_pairs,
             }),
             session: SessionConfig { auto_attach: true },
         })
@@ -125,7 +125,7 @@ fn sync_add_runs_mutagen_create_and_persists_pair() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config(&store);
+    save_client_config(&store, vec![]);
     let runner = FakeRunner::success("");
 
     let sync_pair = add_with(
@@ -157,11 +157,11 @@ fn sync_add_runs_mutagen_create_and_persists_pair() {
 }
 
 #[test]
-fn sync_add_returns_clear_error_on_non_zero_exit_and_does_not_persist() {
+fn sync_add_returns_clear_error_on_non_zero_exit_after_persisting_pair() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config(&store);
+    save_client_config(&store, vec![]);
     let runner = FakeRunner::failure("daemon unavailable");
 
     let error = add_with(
@@ -176,18 +176,36 @@ fn sync_add_returns_clear_error_on_non_zero_exit_and_does_not_persist() {
     assert!(error.to_string().contains("command failed: mutagen"));
     assert!(error.to_string().contains("stderr: daemon unavailable"));
     let config = store.load_config().unwrap();
-    assert!(config.client.unwrap().sync_pairs.is_empty());
+    let saved_pairs = config.client.unwrap().sync_pairs;
+    assert_eq!(saved_pairs.len(), 1);
+    assert_eq!(saved_pairs[0].name, "project");
+    assert_eq!(saved_pairs[0].local, "~/src/project");
+    assert_eq!(saved_pairs[0].remote, "~/remote/project");
+    assert_eq!(saved_pairs[0].mode, SYNC_MODE_TWO_WAY_RESOLVED);
 }
 
 #[test]
-fn sync_list_runs_mutagen_list_and_returns_output() {
-    let runner = FakeRunner::success("Name: project");
+fn sync_list_reads_persisted_sync_pairs_from_config() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config(
+        &store,
+        vec![SyncPairConfig {
+            name: "project".into(),
+            local: "~/src/project".into(),
+            remote: "~/remote/project".into(),
+            mode: SYNC_MODE_TWO_WAY_RESOLVED.into(),
+        }],
+    );
 
-    let output = list_with(&runner).unwrap();
+    let pairs = list_with(&store).unwrap();
 
-    assert_eq!(output, "Name: project");
-    let calls = runner.calls.borrow();
-    assert_eq!(calls.as_slice(), &[("mutagen".into(), list_args())]);
+    assert_eq!(pairs.len(), 1);
+    assert_eq!(pairs[0].name, "project");
+    assert_eq!(pairs[0].local, "~/src/project");
+    assert_eq!(pairs[0].remote, "~/remote/project");
+    assert_eq!(pairs[0].mode, SYNC_MODE_TWO_WAY_RESOLVED);
 }
 
 #[test]
