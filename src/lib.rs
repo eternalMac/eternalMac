@@ -7,6 +7,9 @@ pub mod commands;
 pub mod config {
     pub mod store;
 }
+pub mod doctor {
+    pub mod service;
+}
 pub mod daemon {
     pub mod client;
     pub mod server;
@@ -31,6 +34,9 @@ pub mod setup {
     pub mod client;
     pub mod prompts;
     pub mod server;
+}
+pub mod status {
+    pub mod service;
 }
 pub mod tooling {
     pub mod brew;

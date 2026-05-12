@@ -88,14 +88,8 @@ pub fn run() -> Result<()> {
             target: SetupCommand::Client { server },
         }) => setup::run_client(server),
         Some(Command::Attach { session }) => attach::run(session.as_deref()),
-        Some(Command::Status) => {
-            status::run();
-            Ok(())
-        }
-        Some(Command::Doctor) => {
-            doctor::run();
-            Ok(())
-        }
+        Some(Command::Status) => status::run(),
+        Some(Command::Doctor) => doctor::run(),
         Some(Command::Session {
             action: SessionAction::List,
         }) => session::list(),
