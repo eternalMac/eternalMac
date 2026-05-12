@@ -4,10 +4,11 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::app::paths::Paths;
 use crate::config::store::Store;
+use crate::model::config::SyncPairConfig;
 use crate::model::config::Role;
 use crate::model::state::{State, SyncPairState};
 use crate::process::runner::{Output, Runner};
-use crate::tooling::mutagen::list_args;
+use crate::tooling::mutagen::{list_args, parse_list_output, ListedSession};
 use crate::tooling::tailscale::{parse_status_json, status_args};
 
 #[derive(Debug, Clone)]
@@ -54,49 +55,6 @@ fn current_unix_seconds() -> Result<i64> {
     i64::try_from(seconds).context("unix timestamp overflow converting u64 to i64")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct MutagenSyncStatus {
-    name: String,
-    status: String,
-}
-
-fn parse_sync_statuses(mutagen_output: &str) -> Vec<MutagenSyncStatus> {
-    fn push_current(
-        parsed: &mut Vec<MutagenSyncStatus>,
-        current_name: &mut Option<String>,
-        current_status: &mut Option<String>,
-    ) {
-        if let (Some(name), Some(status)) = (current_name.take(), current_status.take()) {
-            parsed.push(MutagenSyncStatus { name, status });
-        }
-    }
-
-    let mut parsed = Vec::new();
-    let mut current_name: Option<String> = None;
-    let mut current_status: Option<String> = None;
-
-    for raw_line in mutagen_output.lines() {
-        let line = raw_line.trim();
-        if line.is_empty() {
-            push_current(&mut parsed, &mut current_name, &mut current_status);
-            continue;
-        }
-
-        if let Some(name) = line.strip_prefix("Name:") {
-            push_current(&mut parsed, &mut current_name, &mut current_status);
-            current_name = Some(name.trim().to_string());
-            continue;
-        }
-
-        if let Some(status) = line.strip_prefix("Status:") {
-            current_status = Some(status.trim().to_string());
-        }
-    }
-
-    push_current(&mut parsed, &mut current_name, &mut current_status);
-    parsed
-}
-
 fn status_is_active(status: &str) -> bool {
     let normalized = status.trim().to_ascii_lowercase();
     if normalized.is_empty() {
@@ -131,12 +89,24 @@ fn status_is_active(status: &str) -> bool {
     .any(|marker| normalized.contains(marker))
 }
 
-fn sync_status(parsed_syncs: &[MutagenSyncStatus], sync_name: &str) -> String {
-    let Some(entry) = parsed_syncs.iter().find(|sync| sync.name == sync_name) else {
+fn sync_status(parsed_syncs: &[ListedSession], sync_pair: &SyncPairConfig) -> String {
+    let matching_syncs = parsed_syncs
+        .iter()
+        .filter(|sync| {
+            sync.name == sync_pair.name
+                && sync.alpha_url.as_deref() == Some(sync_pair.local.as_str())
+                && sync.beta_url.as_deref() == Some(sync_pair.remote.as_str())
+        })
+        .collect::<Vec<_>>();
+
+    let Some(entry) = matching_syncs.first() else {
         return "missing".into();
     };
+    if matching_syncs.len() > 1 {
+        return "degraded".into();
+    }
 
-    if status_is_active(&entry.status) {
+    if entry.status.as_deref().is_some_and(status_is_active) {
         return "active".into();
     }
 
@@ -177,7 +147,7 @@ pub fn run_once<R: Runner>(_paths: &Paths, store: &Store, runner: &R) -> Result<
     let tailscale_ok = tailscale_status.backend_state == "Running";
 
     let mutagen_output = run_checked(runner, "mutagen", &list_args())?;
-    let parsed_syncs = parse_sync_statuses(&mutagen_output.stdout);
+    let parsed_syncs = parse_list_output(&mutagen_output.stdout);
     let syncs = client
         .sync_pairs
         .iter()
@@ -186,7 +156,7 @@ pub fn run_once<R: Runner>(_paths: &Paths, store: &Store, runner: &R) -> Result<
             local: sync_pair.local.clone(),
             remote: sync_pair.remote.clone(),
             mode: sync_pair.mode.clone(),
-            status: sync_status(&parsed_syncs, &sync_pair.name),
+            status: sync_status(&parsed_syncs, sync_pair),
         })
         .collect::<Vec<_>>();
     let all_syncs_active = syncs.iter().all(|sync| sync.status == "active");

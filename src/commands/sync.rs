@@ -48,6 +48,12 @@ pub fn add_with<R: Runner>(
         .iter_mut()
         .find(|existing| existing.name == sync_pair.name)
     {
+        if existing.local != sync_pair.local || existing.remote != sync_pair.remote {
+            return Err(anyhow!(
+                "sync add found existing pair `{}` with different endpoints; use a different name or remove the existing pair first",
+                sync_pair.name
+            ));
+        }
         *existing = sync_pair.clone();
     } else {
         client.sync_pairs.push(sync_pair.clone());

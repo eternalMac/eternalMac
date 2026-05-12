@@ -185,6 +185,42 @@ fn sync_add_returns_clear_error_on_non_zero_exit_after_persisting_pair() {
 }
 
 #[test]
+fn sync_add_rejects_reusing_a_name_for_different_endpoints() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config(
+        &store,
+        vec![SyncPairConfig {
+            name: "project".into(),
+            local: "~/src/project".into(),
+            remote: "~/remote/project".into(),
+            mode: SYNC_MODE_TWO_WAY_RESOLVED.into(),
+        }],
+    );
+    let runner = FakeRunner::success("");
+
+    let error = add_with(
+        &store,
+        &runner,
+        "project",
+        "~/src/other-project",
+        "~/remote/other-project",
+    )
+    .unwrap_err();
+
+    assert!(error.to_string().contains("different endpoints"));
+    let config = store.load_config().unwrap();
+    let saved_pairs = config.client.unwrap().sync_pairs;
+    assert_eq!(saved_pairs.len(), 1);
+    assert_eq!(saved_pairs[0].local, "~/src/project");
+    assert_eq!(saved_pairs[0].remote, "~/remote/project");
+
+    let calls = runner.calls.borrow();
+    assert!(calls.is_empty());
+}
+
+#[test]
 fn sync_list_reads_persisted_sync_pairs_from_config() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());

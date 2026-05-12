@@ -129,7 +129,7 @@ fn client_run_once_refreshes_sync_state_from_config_and_mutagen_listing() {
             "mutagen",
             list_args(),
             Output {
-                stdout: "Name: project\nStatus: Watching for changes\n".into(),
+                stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: Watching for changes\n".into(),
                 stderr: String::new(),
                 success: true,
             },
@@ -206,7 +206,7 @@ fn client_run_once_matches_sync_names_exactly() {
             "mutagen",
             list_args(),
             Output {
-                stdout: "Name: project\nStatus: Watching for changes\n".into(),
+                stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: Watching for changes\n".into(),
                 stderr: String::new(),
                 success: true,
             },
@@ -245,6 +245,60 @@ fn client_run_once_matches_sync_names_exactly() {
     assert_eq!(state.syncs[0].status, "missing");
     assert_eq!(state.syncs[1].name, "project");
     assert_eq!(state.syncs[1].status, "active");
+}
+
+#[test]
+fn client_run_once_matches_syncs_by_name_and_endpoints_not_first_name_match() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::default()
+        .with_response(
+            "tailscale",
+            status_args(),
+            Output {
+                stdout:
+                    r#"{"BackendState":"Running","Self":{"DNSName":"mac-mini.example.ts.net"}}"#
+                        .into(),
+                stderr: String::new(),
+                success: true,
+            },
+        )
+        .with_response(
+            "mutagen",
+            list_args(),
+            Output {
+                stdout: "Name: project\nIdentifier: sync_wrong\nLabels: None\nAlpha:\n    URL: /Users/me/other-project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/other-project\n    Connection state: Connected\nStatus: Watching for changes\n\nName: project\nIdentifier: sync_right\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: reconnecting\n".into(),
+                stderr: String::new(),
+                success: true,
+            },
+        );
+
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                pinned: vec![],
+                sync_pairs: vec![SyncPairConfig {
+                    name: "project".into(),
+                    local: "/Users/me/project".into(),
+                    remote: "mac-mini.example.ts.net:~/project".into(),
+                    mode: "two-way-resolved".into(),
+                }],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+
+    eternalmac::daemon::client::run_once(&paths, &store, &runner).unwrap();
+
+    let state = store.load_state().unwrap();
+    assert_eq!(state.syncs.len(), 1);
+    assert_eq!(state.syncs[0].name, "project");
+    assert_eq!(state.syncs[0].status, "degraded");
+    assert!(!state.healthy);
 }
 
 #[test]
@@ -434,7 +488,7 @@ fn client_run_once_marks_transient_sync_status_as_degraded() {
             "mutagen",
             list_args(),
             Output {
-                stdout: "Name: project\nStatus: reconnecting\n".into(),
+                stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: reconnecting\n".into(),
                 stderr: String::new(),
                 success: true,
             },
