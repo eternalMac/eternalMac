@@ -10,7 +10,7 @@ use crate::model::state::State;
 use crate::platform::launchd::{write_plist, Definition};
 use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args};
-use crate::tooling::tailscale::{parse_status_json, status_args};
+use crate::tooling::tailscale::{parse_status_json, status_args, Status as TailscaleStatus};
 use crate::tooling::tmux::new_session_args;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +109,21 @@ fn persist_config_and_state(
     Ok(())
 }
 
+fn resolve_server_dns(status: &TailscaleStatus) -> Result<String> {
+    if status.backend_state != "Running" {
+        return Err(anyhow!(
+            "tailscale is not connected (backend state: {}); sign in to Tailscale and rerun `eternalMac setup server`",
+            status.backend_state
+        ));
+    }
+
+    status.dns_name.clone().ok_or_else(|| {
+        anyhow!(
+            "tailscale dns name is unavailable; finish Tailscale login and rerun `eternalMac setup server`"
+        )
+    })
+}
+
 pub fn apply_server_setup<R: Runner>(
     paths: &Paths,
     store: &Store,
@@ -126,10 +141,8 @@ pub fn apply_server_setup<R: Runner>(
     let tailscale_args = status_args();
     let tailscale_status = run_checked(runner, "tailscale", &tailscale_args)?;
     let parsed_status = parse_status_json(&tailscale_status.stdout)?;
-    let dns_name = parsed_status
-        .dns_name
-        .unwrap_or_else(|| format!("{host_label}.unknown.ts.net"));
-    let tailscale_ok = parsed_status.backend_state == "Running";
+    let dns_name = resolve_server_dns(&parsed_status)?;
+    let tailscale_ok = true;
 
     let default_session = "default".to_string();
 

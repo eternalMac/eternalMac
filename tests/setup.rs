@@ -194,6 +194,34 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
 }
 
 #[test]
+fn server_setup_errors_when_tailscale_dns_is_unavailable() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_stubs(vec![Stub {
+        program: "tailscale".to_string(),
+        args: vec!["status".to_string(), "--json".to_string()],
+        output: Output {
+            stdout: r#"{"BackendState":"Running","Self":{}}"#.to_string(),
+            stderr: String::new(),
+            success: true,
+        },
+    }]);
+
+    let err = apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap_err();
+    let err_text = err.to_string();
+    assert!(err_text.contains("tailscale"));
+    assert!(err_text.contains("dns"));
+
+    assert!(!paths.config_file.exists());
+    assert!(!paths.state_file.exists());
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, _)| program == "tmux"));
+    assert!(!calls.iter().any(|(program, _)| program == "launchctl"));
+}
+
+#[test]
 fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
