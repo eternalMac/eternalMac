@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::ErrorKind;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use crate::app::paths::Paths;
 use crate::config::store::Store;
@@ -124,6 +124,13 @@ fn resolve_server_dns(status: &TailscaleStatus) -> Result<String> {
     })
 }
 
+fn current_executable_path() -> Result<String> {
+    Ok(std::env::current_exe()
+        .context("resolving current executable path for server launch agent")?
+        .display()
+        .to_string())
+}
+
 fn tmux_list_sessions_failed_without_server(stderr: &str) -> bool {
     let normalized = stderr.trim().to_ascii_lowercase();
     if normalized.is_empty() {
@@ -208,13 +215,14 @@ pub fn apply_server_setup<R: Runner>(
         run_checked(runner, "tmux", &tmux_args)?;
         known_sessions.push(default_session.clone());
     }
+    let executable_path = current_executable_path()?;
 
     write_plist(
         &paths.server_plist,
         &Definition {
             label: "com.eternalmac.server".into(),
             program_arguments: vec![
-                "/opt/homebrew/bin/eternalMac".into(),
+                executable_path,
                 "daemon".into(),
                 "server".into(),
             ],

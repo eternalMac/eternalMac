@@ -115,6 +115,10 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
     assert!(state.default_session_present);
 
     assert!(paths.server_plist.exists());
+    let server_plist = fs::read_to_string(&paths.server_plist).unwrap();
+    assert!(server_plist.contains(
+        std::env::current_exe().unwrap().display().to_string().as_str()
+    ));
     assert_eq!(summary.dns_name, "mac-mini.example.ts.net");
     assert_eq!(summary.default_session, "default");
 
@@ -314,6 +318,10 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     assert_eq!(state.syncs[0].status, "created");
 
     assert!(paths.client_plist.exists());
+    let client_plist = fs::read_to_string(&paths.client_plist).unwrap();
+    assert!(client_plist.contains(
+        std::env::current_exe().unwrap().display().to_string().as_str()
+    ));
     assert_eq!(summary.paired_server, "mac-mini.example.ts.net");
     assert_eq!(summary.sync_names, vec!["project"]);
 

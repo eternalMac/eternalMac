@@ -1,7 +1,7 @@
 use std::fs;
 use std::io::ErrorKind;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 
 use crate::app::paths::Paths;
 use crate::config::store::Store;
@@ -159,6 +159,13 @@ fn has_matching_existing_sync(existing_syncs: &[ListedSession], root: &SyncRootI
     ))
 }
 
+fn current_executable_path() -> Result<String> {
+    Ok(std::env::current_exe()
+        .context("resolving current executable path for client launch agent")?
+        .display()
+        .to_string())
+}
+
 pub fn apply_client_setup<R: Runner>(
     paths: &Paths,
     store: &Store,
@@ -258,13 +265,14 @@ pub fn apply_client_setup<R: Runner>(
         .iter()
         .map(|pair| pair.name.clone())
         .collect::<Vec<_>>();
+    let executable_path = current_executable_path()?;
 
     write_plist(
         &paths.client_plist,
         &Definition {
             label: "com.eternalmac.client".into(),
             program_arguments: vec![
-                "/opt/homebrew/bin/eternalMac".into(),
+                executable_path,
                 "daemon".into(),
                 "client".into(),
             ],
