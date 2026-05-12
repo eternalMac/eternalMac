@@ -2,6 +2,7 @@ use assert_cmd::Command;
 use eternalmac::app::paths::Paths;
 use eternalmac::config::store::Store;
 use eternalmac::model::config::{Config, Role, ServerConfig, SessionConfig};
+use eternalmac::model::state::State;
 use predicates::str::contains;
 
 #[test]
@@ -47,4 +48,47 @@ fn doctor_reports_missing_state_when_config_exists() {
         .stdout(contains(
             "state missing: re-run `eternalMac setup server` to restore local state",
         ));
+}
+
+#[test]
+fn doctor_reports_stale_daemon_heartbeat() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    store
+        .save_config(&Config {
+            role: Role::Server,
+            server: Some(ServerConfig {
+                host_label: "mac-mini".into(),
+                default_session: "default".into(),
+                boot_sessions: vec!["default".into()],
+                tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            }),
+            client: None,
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Server,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "server daemon healthy".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: 1,
+            default_session_present: true,
+            known_sessions: vec!["default".into()],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .env("HOME", tempdir.path())
+        .args(["doctor"])
+        .assert()
+        .success()
+        .stdout(contains("daemon heartbeat stale"));
 }

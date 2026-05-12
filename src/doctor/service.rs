@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use crate::config::store::Store;
 use crate::model::config::{Config, Role};
+use crate::status::service::daemon_heartbeat_stale;
 
 const CONFIG_MISSING_ISSUE: &str =
     "config missing: run `eternalMac setup server` or `eternalMac setup client`";
@@ -39,6 +40,13 @@ fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Re
                     role_name(&config.role),
                     role_name(&state.role)
                 ));
+            }
+
+            if daemon_heartbeat_stale(&state)? {
+                issues.push(
+                    "daemon heartbeat stale: daemon has not refreshed local health recently"
+                        .to_string(),
+                );
             }
         }
         Err(error) if is_not_found(&error) => issues.push(state_missing_issue(config)),

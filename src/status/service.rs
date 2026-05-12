@@ -1,6 +1,7 @@
 use std::io::ErrorKind;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::config::store::Store;
 use crate::model::config::{Config, Role};
@@ -19,6 +20,8 @@ pub enum StatusLoad {
     StateMissing { config: Config },
     RoleMismatch { config_role: Role, state_role: Role },
 }
+
+const DAEMON_HEARTBEAT_STALE_AFTER_SECONDS: i64 = 90;
 
 pub fn load(store: &Store) -> Result<StatusLoad> {
     let config = match store.load_config() {
@@ -44,12 +47,25 @@ pub fn load(store: &Store) -> Result<StatusLoad> {
 }
 
 pub fn render_summary(snapshot: &StatusSnapshot) -> String {
+    let daemon_heartbeat_stale = daemon_heartbeat_stale(&snapshot.state).unwrap_or(false);
+    let effective_daemon_healthy = snapshot.state.daemon_healthy && !daemon_heartbeat_stale;
+    let effective_healthy = snapshot.state.healthy && !daemon_heartbeat_stale;
+    let summary = if daemon_heartbeat_stale {
+        format!("{}; daemon heartbeat stale", snapshot.state.summary)
+    } else {
+        snapshot.state.summary.clone()
+    };
+
     let mut lines = vec![
         format!("role: {}", role_name(&snapshot.config.role)),
-        format!("healthy: {}", yes_no(snapshot.state.healthy)),
-        format!("summary: {}", snapshot.state.summary),
+        format!("healthy: {}", yes_no(effective_healthy)),
+        format!("summary: {}", summary),
         format!("tailscale: {}", yes_no(snapshot.state.tailscale_ok)),
-        format!("daemon healthy: {}", yes_no(snapshot.state.daemon_healthy)),
+        format!("daemon healthy: {}", yes_no(effective_daemon_healthy)),
+        format!(
+            "daemon heartbeat stale: {}",
+            yes_no(daemon_heartbeat_stale)
+        ),
         format!(
             "server reachable: {}",
             yes_no(snapshot.state.server_reachable)
@@ -126,6 +142,20 @@ fn roles_match(config_role: &Role, state_role: &Role) -> bool {
         (config_role, state_role),
         (Role::Server, Role::Server) | (Role::Client, Role::Client)
     )
+}
+
+pub fn daemon_heartbeat_stale(state: &State) -> Result<bool> {
+    if !state.daemon_healthy || state.daemon_heartbeat_unix <= 0 {
+        return Ok(false);
+    }
+
+    let now = current_unix_seconds()?;
+    Ok(now - state.daemon_heartbeat_unix > DAEMON_HEARTBEAT_STALE_AFTER_SECONDS)
+}
+
+fn current_unix_seconds() -> Result<i64> {
+    let seconds = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    i64::try_from(seconds).context("unix timestamp overflow converting u64 to i64")
 }
 
 fn is_not_found(error: &anyhow::Error) -> bool {
