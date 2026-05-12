@@ -6,6 +6,7 @@ use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, ServerConfig, SessionConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::session::service::{pin, unpin};
+use eternalmac::tooling::et::build_remote_command_args;
 use eternalmac::tooling::tmux::{list_sessions_args, new_session_args};
 
 struct FakeRunner {
@@ -100,9 +101,13 @@ fn unpin_is_noop_when_session_not_present() {
 
 #[test]
 fn session_list_runs_tmux_list_and_parses_output() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, Some(vec!["default".into()]), None);
     let runner = FakeRunner::success("default\npairing\n");
 
-    let sessions = list_with(&runner).unwrap();
+    let sessions = list_with(&store, &runner).unwrap();
 
     assert_eq!(sessions, vec!["default", "pairing"]);
     let calls = runner.calls.borrow();
@@ -110,10 +115,35 @@ fn session_list_runs_tmux_list_and_parses_output() {
 }
 
 #[test]
-fn session_create_runs_tmux_new_session() {
+fn session_list_uses_et_against_paired_server_when_client_config_exists() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, None, Some(vec![]));
+    let runner = FakeRunner::success("default\npairing\n");
+
+    let sessions = list_with(&store, &runner).unwrap();
+
+    assert_eq!(sessions, vec!["default", "pairing"]);
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "et".into(),
+            build_remote_command_args("mac-mini", "tmux list-sessions -F '#S'")
+        )]
+    );
+}
+
+#[test]
+fn session_create_runs_tmux_new_session_locally_on_server() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, Some(vec!["default".into()]), None);
     let runner = FakeRunner::success("");
 
-    create_with(&runner, "demo").unwrap();
+    create_with(&store, &runner, "demo").unwrap();
 
     let calls = runner.calls.borrow();
     assert_eq!(
@@ -123,10 +153,34 @@ fn session_create_runs_tmux_new_session() {
 }
 
 #[test]
+fn session_create_uses_et_against_paired_server_when_client_config_exists() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, None, Some(vec![]));
+    let runner = FakeRunner::success("");
+
+    create_with(&store, &runner, "demo").unwrap();
+
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "et".into(),
+            build_remote_command_args("mac-mini", "tmux new-session -d -s 'demo'")
+        )]
+    );
+}
+
+#[test]
 fn session_create_returns_clear_error_on_non_zero_exit() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, Some(vec!["default".into()]), None);
     let runner = FakeRunner::failure("session exists");
 
-    let error = create_with(&runner, "demo").unwrap_err();
+    let error = create_with(&store, &runner, "demo").unwrap_err();
     assert!(error.to_string().contains("command failed: tmux"));
     assert!(error.to_string().contains("stderr: session exists"));
 }
