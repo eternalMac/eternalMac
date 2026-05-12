@@ -83,12 +83,20 @@ fn current_unix_seconds() -> Result<i64> {
 }
 
 pub fn save_failure_state(store: &Store, error: &anyhow::Error) -> Result<()> {
+    let config = store
+        .load_config()
+        .context("loading config for server failure state")?;
+    if !matches!(config.role, Role::Server) {
+        return Err(anyhow!(
+            "refusing to write server failure state because config role is client"
+        ));
+    }
+
     let existing_state = store.load_state().ok();
-    let config_tailscale_dns = store.load_config().ok().and_then(|config| {
-        config
-            .server
-            .and_then(|server| server.tailscale_dns.map(|dns| dns.to_string()))
-    });
+    let config_tailscale_dns = config
+        .server
+        .as_ref()
+        .and_then(|server| server.tailscale_dns.as_ref().map(|dns| dns.to_string()));
 
     let (default_session_present, known_sessions, tailscale_dns_from_state) =
         if let Some(state) = existing_state.as_ref() {

@@ -307,6 +307,23 @@ fn client_failure_state_snapshot_marks_daemon_unhealthy() {
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths.clone());
     store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                pinned: vec![],
+                sync_pairs: vec![SyncPairConfig {
+                    name: "project".into(),
+                    local: "/Users/me/project".into(),
+                    remote: "mac-mini.example.ts.net:~/project".into(),
+                    mode: "two-way-resolved".into(),
+                }],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
         .save_state(&State {
             role: Role::Client,
             tailscale_ok: true,
@@ -337,6 +354,104 @@ fn client_failure_state_snapshot_marks_daemon_unhealthy() {
     assert!(state.daemon_heartbeat_unix > 0);
     assert!(state.summary.contains("tailscale timed out"));
     assert_eq!(state.syncs.len(), 1);
+}
+
+#[test]
+fn server_failure_state_does_not_overwrite_client_role_state() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                pinned: vec![],
+                sync_pairs: vec![SyncPairConfig {
+                    name: "project".into(),
+                    local: "/Users/me/project".into(),
+                    remote: "mac-mini.example.ts.net:~/project".into(),
+                    mode: "two-way-resolved".into(),
+                }],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "client daemon healthy".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: 42,
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: vec![SyncPairState {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+                mode: "two-way-resolved".into(),
+                status: "active".into(),
+            }],
+        })
+        .unwrap();
+
+    let error = eternalmac::daemon::server::save_failure_state(&store, &anyhow!("wrong daemon"))
+        .unwrap_err();
+    assert!(error.to_string().contains("config role"));
+
+    let state = store.load_state().unwrap();
+    assert!(matches!(state.role, Role::Client));
+    assert_eq!(state.summary, "client daemon healthy");
+    assert!(state.daemon_healthy);
+}
+
+#[test]
+fn client_failure_state_does_not_overwrite_server_role_state() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    store
+        .save_config(&Config {
+            role: Role::Server,
+            server: Some(ServerConfig {
+                host_label: "mac-mini".into(),
+                default_session: "default".into(),
+                boot_sessions: vec!["default".into()],
+                tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            }),
+            client: None,
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Server,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "server daemon healthy".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: 42,
+            default_session_present: true,
+            known_sessions: vec!["default".into()],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    let error = eternalmac::daemon::client::save_failure_state(&store, &anyhow!("wrong daemon"))
+        .unwrap_err();
+    assert!(error.to_string().contains("config role"));
+
+    let state = store.load_state().unwrap();
+    assert!(matches!(state.role, Role::Server));
+    assert_eq!(state.summary, "server daemon healthy");
+    assert!(state.daemon_healthy);
 }
 
 #[test]

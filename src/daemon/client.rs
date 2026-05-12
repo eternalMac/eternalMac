@@ -114,6 +114,15 @@ fn sync_status(parsed_syncs: &[ListedSession], sync_pair: &SyncPairConfig) -> St
 }
 
 pub fn save_failure_state(store: &Store, error: &anyhow::Error) -> Result<()> {
+    let config = store
+        .load_config()
+        .context("loading config for client failure state")?;
+    if !matches!(config.role, Role::Client) {
+        return Err(anyhow!(
+            "refusing to write client failure state because config role is server"
+        ));
+    }
+
     let existing_state = store.load_state().ok();
 
     store.save_state(&State {
