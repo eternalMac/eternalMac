@@ -210,7 +210,10 @@ pub fn apply_server_setup<R: Runner>(
         return Err(anyhow!(message));
     };
 
-    if !known_sessions.iter().any(|session| session == &default_session) {
+    if !known_sessions
+        .iter()
+        .any(|session| session == &default_session)
+    {
         let tmux_args = new_session_args(&default_session);
         run_checked(runner, "tmux", &tmux_args)?;
         known_sessions.push(default_session.clone());
@@ -221,11 +224,7 @@ pub fn apply_server_setup<R: Runner>(
         &paths.server_plist,
         &Definition {
             label: "com.eternalmac.server".into(),
-            program_arguments: vec![
-                executable_path,
-                "daemon".into(),
-                "server".into(),
-            ],
+            program_arguments: vec![executable_path, "daemon".into(), "server".into()],
             run_at_load: true,
             keep_alive: true,
         },

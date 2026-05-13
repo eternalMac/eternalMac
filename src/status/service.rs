@@ -62,10 +62,7 @@ pub fn render_summary(snapshot: &StatusSnapshot) -> String {
         format!("summary: {}", summary),
         format!("tailscale: {}", yes_no(snapshot.state.tailscale_ok)),
         format!("daemon healthy: {}", yes_no(effective_daemon_healthy)),
-        format!(
-            "daemon heartbeat stale: {}",
-            yes_no(daemon_heartbeat_stale)
-        ),
+        format!("daemon heartbeat stale: {}", yes_no(daemon_heartbeat_stale)),
         format!(
             "server reachable: {}",
             yes_no(snapshot.state.server_reachable)

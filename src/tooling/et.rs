@@ -7,7 +7,10 @@ pub fn build_remote_command_args(server: &str, command: &str) -> Vec<String> {
 }
 
 pub fn build_attach_args(server: &str, session: &str) -> Vec<String> {
-    build_remote_command_args(server, &format!("tmux attach -t {}", quote_shell_arg(session)))
+    build_remote_command_args(
+        server,
+        &format!("tmux attach -t {}", quote_shell_arg(session)),
+    )
 }
 
 pub fn build_list_sessions_args(server: &str) -> Vec<String> {

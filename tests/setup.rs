@@ -117,7 +117,11 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
     assert!(paths.server_plist.exists());
     let server_plist = fs::read_to_string(&paths.server_plist).unwrap();
     assert!(server_plist.contains(
-        std::env::current_exe().unwrap().display().to_string().as_str()
+        std::env::current_exe()
+            .unwrap()
+            .display()
+            .to_string()
+            .as_str()
     ));
     assert_eq!(summary.dns_name, "mac-mini.example.ts.net");
     assert_eq!(summary.default_session, "default");
@@ -232,7 +236,11 @@ fn server_setup_skips_bootstrap_when_default_session_already_exists() {
     let store = Store::new(paths.clone());
     let runner = FakeRunner::with_stubs(vec![Stub {
         program: "tmux".to_string(),
-        args: vec!["list-sessions".to_string(), "-F".to_string(), "#S".to_string()],
+        args: vec![
+            "list-sessions".to_string(),
+            "-F".to_string(),
+            "#S".to_string(),
+        ],
         output: Output {
             stdout: "default\npairing\n".to_string(),
             stderr: String::new(),
@@ -320,7 +328,11 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     assert!(paths.client_plist.exists());
     let client_plist = fs::read_to_string(&paths.client_plist).unwrap();
     assert!(client_plist.contains(
-        std::env::current_exe().unwrap().display().to_string().as_str()
+        std::env::current_exe()
+            .unwrap()
+            .display()
+            .to_string()
+            .as_str()
     ));
     assert_eq!(summary.paired_server, "mac-mini.example.ts.net");
     assert_eq!(summary.sync_names, vec!["project"]);

@@ -125,7 +125,10 @@ fn persist_config_and_state(
     Ok(())
 }
 
-fn has_matching_existing_sync(existing_syncs: &[ListedSession], root: &SyncRootInput) -> Result<bool> {
+fn has_matching_existing_sync(
+    existing_syncs: &[ListedSession],
+    root: &SyncRootInput,
+) -> Result<bool> {
     let matching_name = existing_syncs
         .iter()
         .filter(|session| session.name == root.name)
@@ -271,11 +274,7 @@ pub fn apply_client_setup<R: Runner>(
         &paths.client_plist,
         &Definition {
             label: "com.eternalmac.client".into(),
-            program_arguments: vec![
-                executable_path,
-                "daemon".into(),
-                "client".into(),
-            ],
+            program_arguments: vec![executable_path, "daemon".into(), "client".into()],
             run_at_load: true,
             keep_alive: true,
         },

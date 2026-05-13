@@ -4,8 +4,8 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::app::paths::Paths;
 use crate::config::store::Store;
-use crate::model::config::SyncPairConfig;
 use crate::model::config::Role;
+use crate::model::config::SyncPairConfig;
 use crate::model::state::{State, SyncPairState};
 use crate::process::runner::{Output, Runner};
 use crate::tooling::mutagen::{list_args, parse_list_output, ListedSession};
