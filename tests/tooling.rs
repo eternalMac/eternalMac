@@ -1,4 +1,5 @@
 use eternalmac::tooling::brew::{install_cask_args, install_formula_args};
+use eternalmac::tooling::ssh::{build_sync_destination, port_probe_args};
 use eternalmac::tooling::tailscale::{detect_variant, parse_status_json, Variant};
 use eternalmac::tooling::tmux::parse_sessions;
 
@@ -75,5 +76,27 @@ fn tmux_session_parser_ignores_blank_lines() {
     assert_eq!(
         parse_sessions("default\npairing\n\n"),
         vec!["default".to_string(), "pairing".to_string()]
+    );
+}
+
+#[test]
+fn ssh_sync_destination_uses_user_host_and_path() {
+    assert_eq!(
+        build_sync_destination("kindshadow", "mac-mini.example.ts.net", "~/project"),
+        "kindshadow@mac-mini.example.ts.net:~/project"
+    );
+}
+
+#[test]
+fn ssh_port_probe_uses_nc_with_host_and_port_22() {
+    assert_eq!(
+        port_probe_args("mac-mini.example.ts.net"),
+        vec![
+            "-G".to_string(),
+            "5".to_string(),
+            "-z".to_string(),
+            "mac-mini.example.ts.net".to_string(),
+            "22".to_string(),
+        ]
     );
 }

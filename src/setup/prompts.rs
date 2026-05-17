@@ -2,6 +2,7 @@ use anyhow::Result;
 use dialoguer::{Confirm, Input};
 
 use crate::setup::client::SyncRootInput;
+use crate::tooling::ssh::build_sync_destination;
 
 fn validate_non_empty_trimmed(value: &str, field_label: &str) -> std::result::Result<(), String> {
     if value.trim().is_empty() {
@@ -14,6 +15,16 @@ pub fn prompt_server_dns(prefilled: Option<String>) -> Result<String> {
     let mut prompt = Input::<String>::new()
         .with_prompt("Server Tailscale DNS name")
         .validate_with(|input: &String| validate_non_empty_trimmed(input, "Server DNS"));
+    if let Some(prefilled) = prefilled {
+        prompt = prompt.with_initial_text(prefilled);
+    }
+    Ok(prompt.interact_text()?.trim().to_string())
+}
+
+pub fn prompt_server_ssh_user(prefilled: Option<String>) -> Result<String> {
+    let mut prompt = Input::<String>::new()
+        .with_prompt("Server SSH username")
+        .validate_with(|input: &String| validate_non_empty_trimmed(input, "Server SSH username"));
     if let Some(prefilled) = prefilled {
         prompt = prompt.with_initial_text(prefilled);
     }
@@ -45,7 +56,11 @@ pub fn suggest_remote_path(local_path: &str) -> String {
     format!("~/{}", relative)
 }
 
-pub fn prompt_sync_pair(server_dns: &str, index: usize) -> Result<SyncRootInput> {
+pub fn prompt_sync_pair(
+    server_ssh_user: &str,
+    server_dns: &str,
+    index: usize,
+) -> Result<SyncRootInput> {
     let name: String = Input::new()
         .with_prompt(format!("Sync root #{index} name"))
         .validate_with(|input: &String| validate_non_empty_trimmed(input, "Sync name"))
@@ -58,12 +73,13 @@ pub fn prompt_sync_pair(server_dns: &str, index: usize) -> Result<SyncRootInput>
         .interact_text()?;
     let local = local.trim().to_string();
 
-    let remote: String = Input::new()
-        .with_prompt(format!("Sync root #{index} remote destination"))
-        .with_initial_text(format!("{}:{}", server_dns, suggest_remote_path(&local)))
-        .validate_with(|input: &String| validate_non_empty_trimmed(input, "Remote destination"))
+    let remote_path: String = Input::new()
+        .with_prompt(format!("Sync root #{index} remote path on server"))
+        .with_initial_text(suggest_remote_path(&local))
+        .validate_with(|input: &String| validate_non_empty_trimmed(input, "Remote path"))
         .interact_text()?;
-    let remote = remote.trim().to_string();
+    let remote_path = remote_path.trim().to_string();
+    let remote = build_sync_destination(server_ssh_user, server_dns, &remote_path);
 
     Ok(SyncRootInput {
         name,
@@ -72,14 +88,18 @@ pub fn prompt_sync_pair(server_dns: &str, index: usize) -> Result<SyncRootInput>
     })
 }
 
-pub fn prompt_sync_roots(server_dns: &str) -> Result<Vec<SyncRootInput>> {
-    let mut sync_roots = vec![prompt_sync_pair(server_dns, 1)?];
+pub fn prompt_sync_roots(server_ssh_user: &str, server_dns: &str) -> Result<Vec<SyncRootInput>> {
+    let mut sync_roots = vec![prompt_sync_pair(server_ssh_user, server_dns, 1)?];
     while Confirm::new()
         .with_prompt("Add another sync root?")
         .default(false)
         .interact()?
     {
-        sync_roots.push(prompt_sync_pair(server_dns, sync_roots.len() + 1)?);
+        sync_roots.push(prompt_sync_pair(
+            server_ssh_user,
+            server_dns,
+            sync_roots.len() + 1,
+        )?);
     }
 
     Ok(sync_roots)
@@ -88,6 +108,7 @@ pub fn prompt_sync_roots(server_dns: &str) -> Result<Vec<SyncRootInput>> {
 #[cfg(test)]
 mod tests {
     use super::{suggest_remote_path, validate_non_empty_trimmed};
+    use crate::tooling::ssh::build_sync_destination;
 
     #[test]
     fn suggests_home_relative_path_for_user_home() {
@@ -121,5 +142,13 @@ mod tests {
     #[test]
     fn accepts_non_blank_required_prompt_values() {
         assert!(validate_non_empty_trimmed("project", "Sync name").is_ok());
+    }
+
+    #[test]
+    fn remote_destination_is_built_from_user_host_and_path() {
+        assert_eq!(
+            build_sync_destination("kindshadow", "mac-mini.example.ts.net", "~/project"),
+            "kindshadow@mac-mini.example.ts.net:~/project"
+        );
     }
 }

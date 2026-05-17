@@ -16,6 +16,7 @@ use crate::tooling::mutagen::{
     build_create_args, list_args as mutagen_list_args, parse_list_output, ListedSession,
     SYNC_MODE_TWO_WAY_RESOLVED,
 };
+use crate::tooling::ssh::port_probe_args;
 use crate::tooling::tailscale::{parse_status_json, status_args};
 
 const DAEMON_PATH: &str = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
@@ -178,6 +179,26 @@ fn current_executable_path() -> Result<String> {
         .to_string())
 }
 
+fn verify_server_ssh_port<R: Runner>(runner: &R, server_host: &str) -> Result<()> {
+    let args = port_probe_args(server_host);
+    let output = runner.run("nc", &args)?;
+    if output.success {
+        return Ok(());
+    }
+
+    let mut message = format!(
+        "server SSH port 22 is unreachable on {server_host}; enable Remote Login on the Mac Mini and rerun `eternalMac setup client`"
+    );
+    if !output.stderr.trim().is_empty() {
+        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
+    }
+    if !output.stdout.trim().is_empty() {
+        message.push_str(&format!("; stdout: {}", output.stdout.trim()));
+    }
+
+    Err(anyhow!(message))
+}
+
 pub(crate) fn preflight_client_setup<R: Runner>(runner: &R) -> Result<ClientPreflight> {
     let tap_args = tap_args(MUTAGEN_TAP);
     run_checked(runner, "brew", &tap_args)?;
@@ -207,6 +228,7 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
     input: ClientSetupInput,
 ) -> Result<ClientSetupSummary> {
     let tailscale_ok = preflight.tailscale_ok;
+    verify_server_ssh_port(runner, &input.paired_server)?;
 
     let sync_pairs = input
         .sync_roots

@@ -248,6 +248,36 @@ fn server_setup_errors_when_tailscale_dns_is_unavailable() {
 }
 
 #[test]
+fn server_setup_errors_when_remote_login_is_unavailable() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "nc",
+        vec![
+            "-G".to_string(),
+            "5".to_string(),
+            "-z".to_string(),
+            "localhost".to_string(),
+            "22".to_string(),
+        ],
+        "connection refused",
+    );
+
+    let err = apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap_err();
+    let err_text = err.to_string();
+    assert!(err_text.contains("Remote Login"));
+    assert!(err_text.contains("connection refused"));
+
+    assert!(!paths.config_file.exists());
+    assert!(!paths.state_file.exists());
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, _)| program == "tmux"));
+    assert!(!calls.iter().any(|(program, _)| program == "launchctl"));
+}
+
+#[test]
 fn server_setup_skips_bootstrap_when_default_session_already_exists() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
@@ -454,6 +484,50 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     assert!(brew_tap_index < brew_install_index);
     assert!(unload_index < launchctl_index);
     assert!(mutagen_index < launchctl_index);
+}
+
+#[test]
+fn client_setup_errors_when_server_ssh_port_is_unreachable() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_failure(
+        "nc",
+        vec![
+            "-G".to_string(),
+            "5".to_string(),
+            "-z".to_string(),
+            "mac-mini.example.ts.net".to_string(),
+            "22".to_string(),
+        ],
+        "connection refused",
+    );
+
+    let err = apply_client_setup(
+        &paths,
+        &store,
+        &runner,
+        ClientSetupInput {
+            paired_server: "mac-mini.example.ts.net".into(),
+            sync_roots: vec![SyncRootInput {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "kindshadow@mac-mini.example.ts.net:~/project".into(),
+            }],
+        },
+    )
+    .unwrap_err();
+
+    let err_text = err.to_string();
+    assert!(err_text.contains("port 22"));
+    assert!(err_text.contains("connection refused"));
+
+    assert!(!paths.config_file.exists());
+    assert!(!paths.state_file.exists());
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, _)| program == "mutagen"));
+    assert!(!calls.iter().any(|(program, _)| program == "launchctl"));
 }
 
 #[test]

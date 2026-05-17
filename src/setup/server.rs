@@ -12,6 +12,7 @@ use crate::platform::launchd::{write_plist, Definition};
 use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args, tap_args};
 use crate::tooling::dependencies::{required_formulae, MUTAGEN_TAP, TAILSCALE_CASK};
+use crate::tooling::ssh::port_probe_args;
 use crate::tooling::tailscale::{parse_status_json, status_args, Status as TailscaleStatus};
 use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
 
@@ -148,6 +149,24 @@ fn tmux_list_sessions_failed_without_server(stderr: &str) -> bool {
                 || normalized.contains("connection refused")))
 }
 
+fn verify_remote_login<R: Runner>(runner: &R) -> Result<()> {
+    let args = port_probe_args("localhost");
+    let output = runner.run("nc", &args)?;
+    if output.success {
+        return Ok(());
+    }
+
+    let mut message = "Remote Login is not reachable on this Mac Mini. Enable Remote Login in System Settings -> General -> Sharing and rerun `eternalMac setup server`".to_string();
+    if !output.stderr.trim().is_empty() {
+        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
+    }
+    if !output.stdout.trim().is_empty() {
+        message.push_str(&format!("; stdout: {}", output.stdout.trim()));
+    }
+
+    Err(anyhow!(message))
+}
+
 pub fn apply_server_setup<R: Runner>(
     paths: &Paths,
     store: &Store,
@@ -170,6 +189,7 @@ pub fn apply_server_setup<R: Runner>(
     let parsed_status = parse_status_json(&tailscale_status.stdout)?;
     let dns_name = resolve_server_dns(&parsed_status)?;
     let tailscale_ok = true;
+    verify_remote_login(runner)?;
 
     let default_session = "default".to_string();
 

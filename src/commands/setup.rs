@@ -5,7 +5,7 @@ use crate::app::context::AppContext;
 use crate::setup::client::{
     apply_client_setup_with_preflight, preflight_client_setup, ClientSetupInput, SyncRootInput,
 };
-use crate::setup::prompts::{prompt_server_dns, prompt_sync_roots};
+use crate::setup::prompts::{prompt_server_dns, prompt_server_ssh_user, prompt_sync_roots};
 use crate::setup::server::apply_server_setup;
 
 const DEFAULT_SERVER_HOST_LABEL: &str = "mac-mini";
@@ -48,8 +48,10 @@ pub fn run_client(server_override: Option<String>) -> Result<()> {
     let context = AppContext::from_env()?;
     let (preflight, input) = collect_client_setup_request(
         server_override,
+        std::env::var("USER").ok(),
         || preflight_client_setup(&context.runner),
         prompt_server_dns,
+        prompt_server_ssh_user,
         prompt_sync_roots,
     )?;
     let summary = apply_client_setup_with_preflight(
@@ -69,18 +71,21 @@ pub fn run_client(server_override: Option<String>) -> Result<()> {
 
 fn collect_client_setup_request<PF, PD, PR, T>(
     server_override: Option<String>,
+    ssh_user_prefill: Option<String>,
     preflight: PF,
     prompt_dns: PD,
+    prompt_user: impl FnOnce(Option<String>) -> Result<String>,
     prompt_roots: PR,
 ) -> Result<(T, ClientSetupInput)>
 where
     PF: FnOnce() -> Result<T>,
     PD: FnOnce(Option<String>) -> Result<String>,
-    PR: FnOnce(&str) -> Result<Vec<SyncRootInput>>,
+    PR: FnOnce(&str, &str) -> Result<Vec<SyncRootInput>>,
 {
     let preflight = preflight()?;
     let paired_server = prompt_dns(server_override)?;
-    let sync_roots = prompt_roots(&paired_server)?;
+    let server_ssh_user = prompt_user(ssh_user_prefill)?;
+    let sync_roots = prompt_roots(&server_ssh_user, &paired_server)?;
 
     Ok((
         preflight,
@@ -106,6 +111,7 @@ mod tests {
 
         let (preflight, input) = collect_client_setup_request(
             Some("override.ts.net".into()),
+            Some("kindshadow".into()),
             || {
                 calls.borrow_mut().push("preflight");
                 Ok("ready")
@@ -115,13 +121,19 @@ mod tests {
                 assert_eq!(server_override.as_deref(), Some("override.ts.net"));
                 Ok("mac-mini.example.ts.net".into())
             },
-            |server_dns| {
+            |user_override| {
+                calls.borrow_mut().push("prompt-user");
+                assert_eq!(user_override.as_deref(), Some("kindshadow"));
+                Ok("kindshadow".into())
+            },
+            |server_user, server_dns| {
                 calls.borrow_mut().push("prompt-syncs");
+                assert_eq!(server_user, "kindshadow");
                 assert_eq!(server_dns, "mac-mini.example.ts.net");
                 Ok(vec![SyncRootInput {
                     name: "project".into(),
                     local: "/Users/me/project".into(),
-                    remote: "mac-mini.example.ts.net:~/project".into(),
+                    remote: "kindshadow@mac-mini.example.ts.net:~/project".into(),
                 }])
             },
         )
@@ -130,7 +142,7 @@ mod tests {
         assert_eq!(preflight, "ready");
         assert_eq!(
             calls.into_inner(),
-            vec!["preflight", "prompt-dns", "prompt-syncs"]
+            vec!["preflight", "prompt-dns", "prompt-user", "prompt-syncs"]
         );
         assert_eq!(input.paired_server, "mac-mini.example.ts.net");
         assert_eq!(input.sync_roots.len(), 1);
@@ -143,6 +155,7 @@ mod tests {
 
         let error = collect_client_setup_request(
             None,
+            Some("kindshadow".into()),
             || -> Result<()> {
                 calls.borrow_mut().push("preflight");
                 Err(anyhow!("tailscale missing"))
@@ -151,7 +164,11 @@ mod tests {
                 calls.borrow_mut().push("prompt-dns");
                 Ok("mac-mini.example.ts.net".into())
             },
-            |_server_dns| {
+            |_user_override| {
+                calls.borrow_mut().push("prompt-user");
+                Ok("kindshadow".into())
+            },
+            |_server_user, _server_dns| {
                 calls.borrow_mut().push("prompt-syncs");
                 Ok(vec![])
             },

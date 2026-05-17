@@ -43,6 +43,7 @@ pub mod tooling {
     pub mod dependencies;
     pub mod et;
     pub mod mutagen;
+    pub mod ssh;
     pub mod tailscale;
     pub mod tmux;
 }
