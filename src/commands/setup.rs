@@ -91,6 +91,7 @@ where
         preflight,
         ClientSetupInput {
             paired_server,
+            server_ssh_user,
             sync_roots,
         },
     ))
@@ -145,6 +146,7 @@ mod tests {
             vec!["preflight", "prompt-dns", "prompt-user", "prompt-syncs"]
         );
         assert_eq!(input.paired_server, "mac-mini.example.ts.net");
+        assert_eq!(input.server_ssh_user, "kindshadow");
         assert_eq!(input.sync_roots.len(), 1);
         assert_eq!(input.sync_roots[0].name, "project");
     }
