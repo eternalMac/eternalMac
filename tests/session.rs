@@ -6,7 +6,7 @@ use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, ServerConfig, SessionConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::session::service::{pin, unpin};
-use eternalmac::tooling::et::build_remote_command_args;
+use eternalmac::tooling::et::{build_remote_command_args, build_remote_command_args_with_options};
 use eternalmac::tooling::tmux::{list_sessions_args, new_session_args};
 
 struct FakeRunner {
@@ -64,7 +64,31 @@ fn save_config(store: &Store, boot_sessions: Option<Vec<String>>, pinned: Option
             }),
             client: pinned.map(|pinned| ClientConfig {
                 paired_server: "mac-mini".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned,
+                sync_pairs: vec![],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+}
+
+fn save_client_config_with_connection(
+    store: &Store,
+    paired_server: &str,
+    server_ssh_user: &str,
+    server_etterminal_path: &str,
+) {
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: paired_server.into(),
+                server_ssh_user: Some(server_ssh_user.into()),
+                server_etterminal_path: Some(server_etterminal_path.into()),
+                pinned: vec![],
                 sync_pairs: vec![],
             }),
             session: SessionConfig { auto_attach: true },
@@ -120,7 +144,9 @@ fn session_list_uses_et_against_paired_server_when_client_config_exists() {
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
     save_config(&store, None, Some(vec![]));
-    let runner = FakeRunner::success("default\npairing\n");
+    let runner = FakeRunner::success(
+        "prompt echo\n__ETERNALMAC_SESSIONS_BEGIN__\ndefault\npairing\n__ETERNALMAC_SESSIONS_END__\nSession terminated\n",
+    );
 
     let sessions = list_with(&store, &runner).unwrap();
 
@@ -130,7 +156,43 @@ fn session_list_uses_et_against_paired_server_when_client_config_exists() {
         calls.as_slice(),
         &[(
             "et".into(),
-            build_remote_command_args("mac-mini", "tmux list-sessions -F '#S'")
+            build_remote_command_args(
+                "mac-mini",
+                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit"
+            )
+        )]
+    );
+}
+
+#[test]
+fn session_list_uses_persisted_terminal_path() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_connection(
+        &store,
+        "mac-mini",
+        "kindshadow",
+        "/opt/homebrew/bin/etterminal",
+    );
+    let runner = FakeRunner::success(
+        "prompt echo\n__ETERNALMAC_SESSIONS_BEGIN__\ndefault\npairing\n__ETERNALMAC_SESSIONS_END__\nSession terminated\n",
+    );
+
+    let sessions = list_with(&store, &runner).unwrap();
+
+    assert_eq!(sessions, vec!["default", "pairing"]);
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "et".into(),
+            build_remote_command_args_with_options(
+                "mac-mini",
+                Some("kindshadow"),
+                Some("/opt/homebrew/bin/etterminal"),
+                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit"
+            )
         )]
     );
 }
@@ -168,6 +230,36 @@ fn session_create_uses_et_against_paired_server_when_client_config_exists() {
         &[(
             "et".into(),
             build_remote_command_args("mac-mini", "tmux new-session -d -s 'demo'")
+        )]
+    );
+}
+
+#[test]
+fn session_create_uses_persisted_terminal_path() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_connection(
+        &store,
+        "mac-mini",
+        "kindshadow",
+        "/opt/homebrew/bin/etterminal",
+    );
+    let runner = FakeRunner::success("");
+
+    create_with(&store, &runner, "demo").unwrap();
+
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "et".into(),
+            build_remote_command_args_with_options(
+                "mac-mini",
+                Some("kindshadow"),
+                Some("/opt/homebrew/bin/etterminal"),
+                "tmux new-session -d -s 'demo'"
+            )
         )]
     );
 }

@@ -53,6 +53,8 @@ fn save_client_config(store: &Store, sync_pairs: Vec<SyncPairConfig>) {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs,
             }),

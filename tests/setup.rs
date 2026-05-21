@@ -67,6 +67,9 @@ impl Runner for FakeRunner {
                 r#"{"BackendState":"Running","Self":{"DNSName":"mac-mini.example.ts.net"}}"#
                     .to_string()
             }
+            ("ssh", _) if args.last().is_some_and(|arg| arg.contains("etterminal")) => {
+                "/opt/homebrew/bin/etterminal\n".to_string()
+            }
             _ => String::new(),
         };
 
@@ -352,6 +355,19 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
         config.client.as_ref().unwrap().paired_server,
         "mac-mini.example.ts.net"
     );
+    assert_eq!(
+        config.client.as_ref().unwrap().server_ssh_user.as_deref(),
+        Some("kindshadow")
+    );
+    assert_eq!(
+        config
+            .client
+            .as_ref()
+            .unwrap()
+            .server_etterminal_path
+            .as_deref(),
+        Some("/opt/homebrew/bin/etterminal")
+    );
     assert_eq!(config.client.as_ref().unwrap().sync_pairs.len(), 1);
     assert_eq!(
         config.client.as_ref().unwrap().sync_pairs[0].mode,
@@ -424,6 +440,12 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     }));
     assert!(calls.iter().any(|(program, args)| {
         program == "tailscale" && args == &vec!["status".to_string(), "--json".to_string()]
+    }));
+    assert!(calls.iter().any(|(program, args)| {
+        program == "ssh"
+            && args
+                .last()
+                .is_some_and(|arg| arg.contains("command -v etterminal"))
     }));
     assert!(calls.iter().any(|(program, args)| {
         program == "mutagen"

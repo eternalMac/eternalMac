@@ -21,6 +21,8 @@ fn config_round_trip_preserves_server_dns_and_client_sync_pairs() {
         }),
         client: Some(ClientConfig {
             paired_server: "server-1".into(),
+            server_ssh_user: Some("kindshadow".into()),
+            server_etterminal_path: Some("/opt/homebrew/bin/etterminal".into()),
             pinned: vec!["workspace".into()],
             sync_pairs: vec![SyncPairConfig {
                 name: "docs".into(),
@@ -45,6 +47,19 @@ fn config_round_trip_preserves_server_dns_and_client_sync_pairs() {
         Some("eternalmac.local".into())
     );
     assert_eq!(loaded.client.as_ref().unwrap().sync_pairs.len(), 1);
+    assert_eq!(
+        loaded.client.as_ref().unwrap().server_ssh_user.as_deref(),
+        Some("kindshadow")
+    );
+    assert_eq!(
+        loaded
+            .client
+            .as_ref()
+            .unwrap()
+            .server_etterminal_path
+            .as_deref(),
+        Some("/opt/homebrew/bin/etterminal")
+    );
     assert_eq!(loaded.client.as_ref().unwrap().sync_pairs[0].name, "docs");
     assert_eq!(
         paths.config_file,

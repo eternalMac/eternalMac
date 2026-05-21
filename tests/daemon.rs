@@ -141,6 +141,8 @@ fn client_run_once_refreshes_sync_state_from_config_and_mutagen_listing() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![
                     SyncPairConfig {
@@ -218,6 +220,8 @@ fn client_run_once_matches_sync_names_exactly() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![
                     SyncPairConfig {
@@ -280,6 +284,8 @@ fn client_run_once_matches_syncs_by_name_and_endpoints_not_first_name_match() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![SyncPairConfig {
                     name: "project".into(),
@@ -312,6 +318,8 @@ fn client_failure_state_snapshot_marks_daemon_unhealthy() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![SyncPairConfig {
                     name: "project".into(),
@@ -367,6 +375,8 @@ fn server_failure_state_does_not_overwrite_client_role_state() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![SyncPairConfig {
                     name: "project".into(),
@@ -615,6 +625,8 @@ fn client_run_once_marks_transient_sync_status_as_degraded() {
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: None,
+                server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs: vec![SyncPairConfig {
                     name: "project".into(),

@@ -25,6 +25,10 @@ pub struct ServerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientConfig {
     pub paired_server: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_ssh_user: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_etterminal_path: Option<String>,
     pub pinned: Vec<String>,
     #[serde(default)]
     pub sync_pairs: Vec<SyncPairConfig>,

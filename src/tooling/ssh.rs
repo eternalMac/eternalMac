@@ -101,6 +101,19 @@ pub fn batch_login_check_args(host: &str) -> Vec<String> {
     ]
 }
 
+pub fn etterminal_path_probe_args(host: &str) -> Vec<String> {
+    vec![
+        "-o".into(),
+        "BatchMode=yes".into(),
+        "-o".into(),
+        "StrictHostKeyChecking=accept-new".into(),
+        "-o".into(),
+        "ConnectTimeout=5".into(),
+        host.into(),
+        "if [ -x /opt/homebrew/bin/etterminal ]; then printf '%s\\n' /opt/homebrew/bin/etterminal; elif [ -x /usr/local/bin/etterminal ]; then printf '%s\\n' /usr/local/bin/etterminal; else command -v etterminal; fi".into(),
+    ]
+}
+
 pub fn interactive_authorize_key_args(
     server_user: &str,
     server_host: &str,

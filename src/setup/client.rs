@@ -19,8 +19,8 @@ use crate::tooling::mutagen::{
     SYNC_MODE_TWO_WAY_RESOLVED,
 };
 use crate::tooling::ssh::{
-    batch_login_check_args, interactive_authorize_key_args, managed_identity_paths,
-    port_probe_args, render_managed_host_block, upsert_managed_host_block,
+    batch_login_check_args, etterminal_path_probe_args, interactive_authorize_key_args,
+    managed_identity_paths, port_probe_args, render_managed_host_block, upsert_managed_host_block,
 };
 use crate::tooling::tailscale::{parse_status_json, status_args};
 
@@ -416,6 +416,33 @@ fn ensure_noninteractive_server_ssh<R: Runner>(
     )
 }
 
+fn detect_remote_etterminal_path<R: Runner>(runner: &R, server_host: &str) -> Result<String> {
+    let args = etterminal_path_probe_args(server_host);
+    let output = runner.run("ssh", &args)?;
+    if output.success {
+        if let Some(path) = output
+            .stdout
+            .lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+        {
+            return Ok(path.to_string());
+        }
+    }
+
+    let mut message = format!(
+        "unable to find etterminal on {server_host}; install Eternal Terminal on the Mac Mini and rerun `eternalMac setup client`"
+    );
+    if !output.stderr.trim().is_empty() {
+        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
+    }
+    if !output.stdout.trim().is_empty() {
+        message.push_str(&format!("; stdout: {}", output.stdout.trim()));
+    }
+
+    Err(anyhow!(message))
+}
+
 pub(crate) fn preflight_client_setup<R: Runner>(runner: &R) -> Result<ClientPreflight> {
     let tap_args = tap_args(MUTAGEN_TAP);
     run_checked(runner, "brew", &tap_args)?;
@@ -447,6 +474,7 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
     let tailscale_ok = preflight.tailscale_ok;
     verify_server_ssh_port(runner, &input.paired_server)?;
     ensure_noninteractive_server_ssh(paths, runner, &input.paired_server, &input.server_ssh_user)?;
+    let server_etterminal_path = detect_remote_etterminal_path(runner, &input.paired_server)?;
 
     let sync_pairs = input
         .sync_roots
@@ -464,6 +492,8 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
         server: None,
         client: Some(ClientConfig {
             paired_server: input.paired_server.clone(),
+            server_ssh_user: Some(input.server_ssh_user.clone()),
+            server_etterminal_path: Some(server_etterminal_path),
             pinned: vec![],
             sync_pairs: sync_pairs.clone(),
         }),

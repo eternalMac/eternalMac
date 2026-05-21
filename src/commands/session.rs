@@ -6,8 +6,9 @@ use crate::model::config::Config;
 use crate::process::runner::{Output, Runner};
 use crate::session::service;
 use crate::tooling::et::{
-    build_list_sessions_args as build_remote_list_sessions_args,
-    build_new_session_args as build_remote_new_session_args,
+    build_list_sessions_args_with_options as build_remote_list_sessions_args,
+    build_new_session_args_with_options as build_remote_new_session_args,
+    SESSION_LIST_BEGIN_MARKER, SESSION_LIST_END_MARKER,
 };
 use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
 
@@ -27,12 +28,20 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
 
 enum SessionExecutionTarget<'a> {
     Local,
-    Remote(&'a str),
+    Remote {
+        server: &'a str,
+        server_ssh_user: Option<&'a str>,
+        server_etterminal_path: Option<&'a str>,
+    },
 }
 
 fn execution_target(config: &Config) -> Result<SessionExecutionTarget<'_>> {
     if let Some(client) = config.client.as_ref() {
-        return Ok(SessionExecutionTarget::Remote(&client.paired_server));
+        return Ok(SessionExecutionTarget::Remote {
+            server: &client.paired_server,
+            server_ssh_user: client.server_ssh_user.as_deref(),
+            server_etterminal_path: client.server_etterminal_path.as_deref(),
+        });
     }
 
     if config.server.is_some() {
@@ -44,19 +53,50 @@ fn execution_target(config: &Config) -> Result<SessionExecutionTarget<'_>> {
     ))
 }
 
+fn parse_marked_remote_sessions(stdout: &str) -> Vec<String> {
+    let mut collecting = false;
+    let mut sessions = Vec::new();
+
+    for line in stdout.lines().map(str::trim) {
+        if line == SESSION_LIST_BEGIN_MARKER {
+            collecting = true;
+            sessions.clear();
+            continue;
+        }
+        if line == SESSION_LIST_END_MARKER {
+            break;
+        }
+        if collecting && !line.is_empty() {
+            sessions.push(line.to_string());
+        }
+    }
+
+    sessions
+}
+
 pub fn list_with<R: Runner>(store: &Store, runner: &R) -> Result<Vec<String>> {
     let config = store
         .load_config()
         .context("loading config for session list")?;
 
-    let output = match execution_target(&config)? {
-        SessionExecutionTarget::Local => run_checked(runner, "tmux", &list_sessions_args())?,
-        SessionExecutionTarget::Remote(server) => {
-            run_checked(runner, "et", &build_remote_list_sessions_args(server))?
+    match execution_target(&config)? {
+        SessionExecutionTarget::Local => {
+            let output = run_checked(runner, "tmux", &list_sessions_args())?;
+            Ok(parse_sessions(&output.stdout))
         }
-    };
-
-    Ok(parse_sessions(&output.stdout))
+        SessionExecutionTarget::Remote {
+            server,
+            server_ssh_user,
+            server_etterminal_path,
+        } => {
+            let output = run_checked(
+                runner,
+                "et",
+                &build_remote_list_sessions_args(server, server_ssh_user, server_etterminal_path),
+            )?;
+            Ok(parse_marked_remote_sessions(&output.stdout))
+        }
+    }
 }
 
 pub fn create_with<R: Runner>(store: &Store, runner: &R, name: &str) -> Result<()> {
@@ -66,9 +106,15 @@ pub fn create_with<R: Runner>(store: &Store, runner: &R, name: &str) -> Result<(
 
     match execution_target(&config)? {
         SessionExecutionTarget::Local => run_checked(runner, "tmux", &new_session_args(name))?,
-        SessionExecutionTarget::Remote(server) => {
-            run_checked(runner, "et", &build_remote_new_session_args(server, name))?
-        }
+        SessionExecutionTarget::Remote {
+            server,
+            server_ssh_user,
+            server_etterminal_path,
+        } => run_checked(
+            runner,
+            "et",
+            &build_remote_new_session_args(server, server_ssh_user, server_etterminal_path, name),
+        )?,
     };
 
     Ok(())

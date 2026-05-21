@@ -13,6 +13,10 @@ pub struct Output {
 
 pub trait Runner {
     fn run(&self, program: &str, args: &[String]) -> Result<Output>;
+
+    fn run_interactive(&self, program: &str, args: &[String]) -> Result<Output> {
+        self.run(program, args)
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -42,8 +46,37 @@ impl Runner for SystemRunner {
         }
 
         let searched = candidates.join(", ");
-        Err(last_error.unwrap_or_else(|| std::io::Error::new(ErrorKind::NotFound, "command not found")))
-            .with_context(|| format!("running {program}; searched {searched}"))
+        Err(last_error
+            .unwrap_or_else(|| std::io::Error::new(ErrorKind::NotFound, "command not found")))
+        .with_context(|| format!("running {program}; searched {searched}"))
+    }
+
+    fn run_interactive(&self, program: &str, args: &[String]) -> Result<Output> {
+        let candidates = candidate_program_paths(program);
+        let mut last_error = None;
+
+        for candidate in &candidates {
+            match Command::new(candidate).args(args).status() {
+                Ok(status) => {
+                    return Ok(Output {
+                        stdout: String::new(),
+                        stderr: String::new(),
+                        success: status.success(),
+                    });
+                }
+                Err(error) if error.kind() == ErrorKind::NotFound => {
+                    last_error = Some(error);
+                }
+                Err(error) => {
+                    return Err(error).with_context(|| format!("running {program}"));
+                }
+            }
+        }
+
+        let searched = candidates.join(", ");
+        Err(last_error
+            .unwrap_or_else(|| std::io::Error::new(ErrorKind::NotFound, "command not found")))
+        .with_context(|| format!("running {program}; searched {searched}"))
     }
 }
 

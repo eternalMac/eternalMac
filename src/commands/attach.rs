@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 use crate::app::context::AppContext;
 use crate::config::store::Store;
 use crate::process::runner::{Output, Runner};
-use crate::tooling::et::build_attach_args;
+use crate::tooling::et::build_attach_args_with_options;
 
 const DEFAULT_SESSION: &str = "default";
 
@@ -17,7 +17,7 @@ pub fn resolve_session_name(session: Option<&str>) -> String {
 }
 
 fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
-    let output = runner.run(program, args)?;
+    let output = runner.run_interactive(program, args)?;
     if output.success {
         return Ok(output);
     }
@@ -39,7 +39,12 @@ pub fn run_with<R: Runner>(store: &Store, runner: &R, session: Option<&str>) -> 
     )?;
 
     let session = resolve_session_name(session);
-    let args = build_attach_args(&client.paired_server, &session);
+    let args = build_attach_args_with_options(
+        &client.paired_server,
+        client.server_ssh_user.as_deref(),
+        client.server_etterminal_path.as_deref(),
+        &session,
+    );
     run_checked(runner, "et", &args)?;
     Ok(())
 }

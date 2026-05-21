@@ -48,6 +48,12 @@ fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Re
                         .to_string(),
                 );
             }
+
+            if matches!(config.role, Role::Client) {
+                for sync in state.syncs.iter().filter(|sync| sync.status != "active") {
+                    issues.push(format!("sync {}: {}", sync.status, sync.name));
+                }
+            }
         }
         Err(error) if is_not_found(&error) => issues.push(state_missing_issue(config)),
         Err(error) => issues.push(format!("state unreadable: {error}")),
