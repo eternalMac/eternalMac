@@ -19,6 +19,7 @@ Today, the repo provides:
 - `eternalMac setup server` to configure a Mac Mini as the devserver
 - `eternalMac setup client` to configure a laptop as the thin client
 - `eternalMac attach [session]` to connect to a named remote `tmux` session
+- `eternalMac attach -n <session>` to create a new remote `tmux` session and attach to it
 - `eternalMac session ...` to list, create, pin, and unpin sessions
 - `eternalMac sync ...` to add and inspect sync pairs
 - `eternalMac status` and `eternalMac doctor` for local health and setup checks
@@ -35,6 +36,8 @@ The tool currently assumes Homebrew-managed dependencies and installs or checks:
 - macOS only
 - Homebrew-first workflow
 - Single-user personal devserver model
+
+The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen both rely on SSH for setup and handshaking. Client setup asks for the server SSH username, creates a dedicated passwordless `eternalMac` SSH key, authorizes it with a one-time password prompt when needed, and records the remote `etterminal` path used by ET.
 
 ## Quick Start
 
@@ -62,6 +65,12 @@ Then attach:
 cargo run -- attach
 ```
 
+Create a fresh remote session and attach immediately:
+
+```bash
+cargo run -- attach -n feature-branch
+```
+
 ## Command Surface
 
 ```bash
@@ -69,6 +78,7 @@ eternalMac setup server
 eternalMac setup client [--server <dns-name>]
 
 eternalMac attach [session]
+eternalMac attach -n <session>
 
 eternalMac session list
 eternalMac session new <name>

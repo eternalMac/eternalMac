@@ -19,7 +19,11 @@ enum Command {
         target: SetupCommand,
     },
     #[command(about = "Attach to a session")]
-    Attach { session: Option<String> },
+    Attach {
+        session: Option<String>,
+        #[arg(short = 'n', long = "new", value_name = "SESSION")]
+        new_session: Option<String>,
+    },
     #[command(about = "Show the current server status")]
     Status,
     #[command(about = "Run health checks on the local machine")]
@@ -87,7 +91,10 @@ pub fn run() -> Result<()> {
         Some(Command::Setup {
             target: SetupCommand::Client { server },
         }) => setup::run_client(server),
-        Some(Command::Attach { session }) => attach::run(session.as_deref()),
+        Some(Command::Attach {
+            session,
+            new_session,
+        }) => attach::run(session.as_deref(), new_session.as_deref()),
         Some(Command::Status) => status::run(),
         Some(Command::Doctor) => doctor::run(),
         Some(Command::Session {

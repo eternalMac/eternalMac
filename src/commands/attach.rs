@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 use crate::app::context::AppContext;
 use crate::config::store::Store;
 use crate::process::runner::{Output, Runner};
-use crate::tooling::et::build_attach_args_with_options;
+use crate::tooling::et::{build_attach_args_with_options, build_new_session_args_with_options};
 
 const DEFAULT_SESSION: &str = "default";
 
@@ -16,8 +16,17 @@ pub fn resolve_session_name(session: Option<&str>) -> String {
     selected.into()
 }
 
-fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
-    let output = runner.run_interactive(program, args)?;
+fn run_checked<R: Runner>(
+    runner: &R,
+    program: &str,
+    args: &[String],
+    interactive: bool,
+) -> Result<Output> {
+    let output = if interactive {
+        runner.run_interactive(program, args)?
+    } else {
+        runner.run(program, args)?
+    };
     if output.success {
         return Ok(output);
     }
@@ -30,7 +39,18 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
     Err(anyhow!(message))
 }
 
-pub fn run_with<R: Runner>(store: &Store, runner: &R, session: Option<&str>) -> Result<()> {
+pub fn run_with<R: Runner>(
+    store: &Store,
+    runner: &R,
+    session: Option<&str>,
+    new_session: Option<&str>,
+) -> Result<()> {
+    if session.is_some() && new_session.is_some() {
+        return Err(anyhow!(
+            "attach accepts either an existing session or --new, not both"
+        ));
+    }
+
     let config = store
         .load_config()
         .context("loading client config for attach")?;
@@ -38,18 +58,32 @@ pub fn run_with<R: Runner>(store: &Store, runner: &R, session: Option<&str>) -> 
         "attach requires client config; run `eternalMac setup client` on this machine first",
     )?;
 
-    let session = resolve_session_name(session);
+    let session = match new_session {
+        Some(new_session) => {
+            let session = resolve_session_name(Some(new_session));
+            let args = build_new_session_args_with_options(
+                &client.paired_server,
+                client.server_ssh_user.as_deref(),
+                client.server_etterminal_path.as_deref(),
+                &session,
+            );
+            run_checked(runner, "et", &args, false)?;
+            session
+        }
+        None => resolve_session_name(session),
+    };
+
     let args = build_attach_args_with_options(
         &client.paired_server,
         client.server_ssh_user.as_deref(),
         client.server_etterminal_path.as_deref(),
         &session,
     );
-    run_checked(runner, "et", &args)?;
+    run_checked(runner, "et", &args, true)?;
     Ok(())
 }
 
-pub fn run(session: Option<&str>) -> Result<()> {
+pub fn run(session: Option<&str>, new_session: Option<&str>) -> Result<()> {
     let context = AppContext::from_env()?;
-    run_with(&context.store, &context.runner, session)
+    run_with(&context.store, &context.runner, session, new_session)
 }

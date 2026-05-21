@@ -24,7 +24,7 @@ fn subcommand_help_is_descriptive() {
         .args(["attach", "--help"])
         .assert()
         .success()
-        .stdout(contains("Attach to a session"));
+        .stdout(contains("Attach to a session").and(contains("-n, --new <SESSION>")));
 
     Command::cargo_bin("eternalMac")
         .unwrap()

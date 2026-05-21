@@ -5,7 +5,9 @@ use eternalmac::commands::attach::{resolve_session_name, run_with};
 use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig};
 use eternalmac::process::runner::{Output, Runner};
-use eternalmac::tooling::et::{build_attach_args, build_attach_args_with_options};
+use eternalmac::tooling::et::{
+    build_attach_args, build_attach_args_with_options, build_new_session_args_with_options,
+};
 
 struct FakeRunner {
     calls: RefCell<Vec<(String, Vec<String>)>>,
@@ -139,7 +141,7 @@ fn attach_run_uses_client_server_and_default_session() {
     save_client_config(&store, "mac-mini");
     let runner = FakeRunner::success();
 
-    run_with(&store, &runner, None).unwrap();
+    run_with(&store, &runner, None, None).unwrap();
 
     let calls = runner.interactive_calls.borrow();
     assert_eq!(calls.len(), 1);
@@ -161,7 +163,7 @@ fn attach_run_uses_persisted_terminal_path() {
     );
     let runner = FakeRunner::success();
 
-    run_with(&store, &runner, None).unwrap();
+    run_with(&store, &runner, None, None).unwrap();
 
     let calls = runner.interactive_calls.borrow();
     assert_eq!(calls.len(), 1);
@@ -179,6 +181,81 @@ fn attach_run_uses_persisted_terminal_path() {
 }
 
 #[test]
+fn attach_new_creates_session_then_attaches_to_it() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_connection(
+        &store,
+        "mac-mini",
+        Some("kindshadow"),
+        Some("/opt/homebrew/bin/etterminal"),
+    );
+    let runner = FakeRunner::success();
+
+    run_with(&store, &runner, None, Some("feature")).unwrap();
+
+    let calls = runner.calls.borrow();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].0, "et");
+    assert_eq!(
+        calls[0].1,
+        build_new_session_args_with_options(
+            "mac-mini",
+            Some("kindshadow"),
+            Some("/opt/homebrew/bin/etterminal"),
+            "feature"
+        )
+    );
+
+    let interactive_calls = runner.interactive_calls.borrow();
+    assert_eq!(interactive_calls.len(), 1);
+    assert_eq!(interactive_calls[0].0, "et");
+    assert_eq!(
+        interactive_calls[0].1,
+        build_attach_args_with_options(
+            "mac-mini",
+            Some("kindshadow"),
+            Some("/opt/homebrew/bin/etterminal"),
+            "feature"
+        )
+    );
+}
+
+#[test]
+fn attach_new_does_not_attach_when_session_creation_fails() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config(&store, "mac-mini");
+    let runner = FakeRunner::failure("duplicate session");
+
+    let error = run_with(&store, &runner, None, Some("feature")).unwrap_err();
+    let message = error.to_string();
+
+    assert!(message.contains("command failed: et"));
+    assert!(message.contains("stderr: duplicate session"));
+    assert!(runner.interactive_calls.borrow().is_empty());
+}
+
+#[test]
+fn attach_new_rejects_existing_session_argument() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config(&store, "mac-mini");
+    let runner = FakeRunner::success();
+
+    let error = run_with(&store, &runner, Some("default"), Some("feature")).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("attach accepts either an existing session or --new"));
+    assert!(runner.calls.borrow().is_empty());
+    assert!(runner.interactive_calls.borrow().is_empty());
+}
+
+#[test]
 fn attach_run_returns_clear_error_on_non_zero_exit() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
@@ -186,7 +263,7 @@ fn attach_run_returns_clear_error_on_non_zero_exit() {
     save_client_config(&store, "mac-mini");
     let runner = FakeRunner::failure("unable to connect");
 
-    let error = run_with(&store, &runner, Some("pair")).unwrap_err();
+    let error = run_with(&store, &runner, Some("pair"), None).unwrap_err();
     let message = error.to_string();
 
     assert!(message.contains("command failed: et"));
