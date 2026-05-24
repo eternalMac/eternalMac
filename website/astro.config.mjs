@@ -13,7 +13,7 @@ export default defineConfig({
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/dhruvil009/eternalMac',
+          href: 'https://github.com/eternalMac/eternalMac',
         },
       ],
       sidebar: [

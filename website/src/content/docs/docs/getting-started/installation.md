@@ -3,10 +3,16 @@ title: Installation
 description: Install eternalMac from source while the Homebrew tap is being prepared.
 ---
 
-The first public release will use Homebrew. Until that release is cut, run from source.
+The first public release will use the project Homebrew tap:
 
 ```bash
-git clone https://github.com/dhruvil009/eternalMac
+brew install eternalmac/eternalmac/eternalmac
+```
+
+Until that release is cut, run from source:
+
+```bash
+git clone https://github.com/eternalMac/eternalMac
 cd eternalMac
 cargo build
 ```
@@ -20,4 +26,3 @@ cargo build
 - launchd agents
 
 The MVP is macOS-only and assumes Homebrew-managed dependencies.
-

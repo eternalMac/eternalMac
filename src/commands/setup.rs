@@ -112,7 +112,7 @@ mod tests {
 
         let (preflight, input) = collect_client_setup_request(
             Some("override.ts.net".into()),
-            Some("kindshadow".into()),
+            Some("devuser".into()),
             || {
                 calls.borrow_mut().push("preflight");
                 Ok("ready")
@@ -124,17 +124,17 @@ mod tests {
             },
             |user_override| {
                 calls.borrow_mut().push("prompt-user");
-                assert_eq!(user_override.as_deref(), Some("kindshadow"));
-                Ok("kindshadow".into())
+                assert_eq!(user_override.as_deref(), Some("devuser"));
+                Ok("devuser".into())
             },
             |server_user, server_dns| {
                 calls.borrow_mut().push("prompt-syncs");
-                assert_eq!(server_user, "kindshadow");
+                assert_eq!(server_user, "devuser");
                 assert_eq!(server_dns, "mac-mini.example.ts.net");
                 Ok(vec![SyncRootInput {
                     name: "project".into(),
                     local: "/Users/me/project".into(),
-                    remote: "kindshadow@mac-mini.example.ts.net:~/project".into(),
+                    remote: "devuser@mac-mini.example.ts.net:~/project".into(),
                 }])
             },
         )
@@ -146,7 +146,7 @@ mod tests {
             vec!["preflight", "prompt-dns", "prompt-user", "prompt-syncs"]
         );
         assert_eq!(input.paired_server, "mac-mini.example.ts.net");
-        assert_eq!(input.server_ssh_user, "kindshadow");
+        assert_eq!(input.server_ssh_user, "devuser");
         assert_eq!(input.sync_roots.len(), 1);
         assert_eq!(input.sync_roots[0].name, "project");
     }
@@ -157,7 +157,7 @@ mod tests {
 
         let error = collect_client_setup_request(
             None,
-            Some("kindshadow".into()),
+            Some("devuser".into()),
             || -> Result<()> {
                 calls.borrow_mut().push("preflight");
                 Err(anyhow!("tailscale missing"))
@@ -168,7 +168,7 @@ mod tests {
             },
             |_user_override| {
                 calls.borrow_mut().push("prompt-user");
-                Ok("kindshadow".into())
+                Ok("devuser".into())
             },
             |_server_user, _server_dns| {
                 calls.borrow_mut().push("prompt-syncs");

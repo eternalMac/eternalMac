@@ -41,6 +41,12 @@ The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen
 
 ## Quick Start
 
+Homebrew release path:
+
+```bash
+brew install eternalmac/eternalmac/eternalmac
+```
+
 Source build:
 
 ```bash
@@ -115,8 +121,17 @@ bash scripts/smoke/bootstrap.sh
 
 ## Packaging
 
-The repo includes a Homebrew formula template at `packaging/homebrew/eternalmac.rb.tmpl`.
+The repo includes Homebrew packaging support under `packaging/homebrew`. Local release packaging can be validated with:
+
+```bash
+scripts/release/package-homebrew.sh
+scripts/release/install-homebrew-local.sh
+```
 
 ## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## License
+
+eternalMac is licensed under the Apache License, Version 2.0. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).

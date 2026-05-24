@@ -11,7 +11,7 @@ eternalMac sync add project \
   --remote ~/project
 ```
 
-Bare remote paths are resolved against the paired Mac mini recorded during client setup. You can still pass a full Mutagen endpoint, such as `kindshadow@dhruvils-mac-mini.example.ts.net:~/project`, when you need to override the paired server.
+Bare remote paths are resolved against the paired Mac mini recorded during client setup. You can still pass a full Mutagen endpoint, such as `devuser@mac-mini.example.ts.net:~/project`, when you need to override the paired server.
 
 List configured sync pairs:
 

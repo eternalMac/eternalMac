@@ -171,7 +171,7 @@ fn sync_add_resolves_bare_remote_path_against_paired_server() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config_with_server_user(&store, Some("kindshadow"), vec![]);
+    save_client_config_with_server_user(&store, Some("devuser"), vec![]);
     let runner = FakeRunner::success("");
 
     let sync_pair = add_with(
@@ -183,7 +183,7 @@ fn sync_add_resolves_bare_remote_path_against_paired_server() {
     )
     .unwrap();
 
-    assert_eq!(sync_pair.remote, "kindshadow@mac-mini:~/remote/project");
+    assert_eq!(sync_pair.remote, "devuser@mac-mini:~/remote/project");
     let calls = runner.calls.borrow();
     assert_eq!(
         calls.as_slice(),
@@ -192,16 +192,13 @@ fn sync_add_resolves_bare_remote_path_against_paired_server() {
             build_create_args(
                 "project",
                 "~/src/project",
-                "kindshadow@mac-mini:~/remote/project"
+                "devuser@mac-mini:~/remote/project"
             )
         )]
     );
     let config = store.load_config().unwrap();
     let saved_pairs = config.client.unwrap().sync_pairs;
-    assert_eq!(
-        saved_pairs[0].remote,
-        "kindshadow@mac-mini:~/remote/project"
-    );
+    assert_eq!(saved_pairs[0].remote, "devuser@mac-mini:~/remote/project");
 }
 
 #[test]
@@ -209,7 +206,7 @@ fn sync_add_preserves_full_remote_endpoint() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
-    save_client_config_with_server_user(&store, Some("kindshadow"), vec![]);
+    save_client_config_with_server_user(&store, Some("devuser"), vec![]);
     let runner = FakeRunner::success("");
 
     let sync_pair = add_with(

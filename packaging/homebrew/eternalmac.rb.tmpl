@@ -1,15 +1,33 @@
 class Eternalmac < Formula
   desc "Turn a Mac Mini into a personal devserver"
-  homepage "https://github.com/dhruvil009/eternalMac"
-  version "{{ .Version }}"
+  homepage "https://github.com/eternalMac/eternalMac"
   url "{{ .URL }}"
   sha256 "{{ .SHA256 }}"
+  license "Apache-2.0"
+
+  {{ .ArchRequirement }}
+  depends_on "et"
+  depends_on :macos
+  depends_on "mutagen-io/mutagen/mutagen"
+  depends_on "tmux"
 
   def install
     bin.install "eternalMac"
+    prefix.install "LICENSE", "NOTICE"
+  end
+
+  def caveats
+    <<~EOS
+      Run `eternalMac setup server` on the Mac Mini.
+      Run `eternalMac setup client` on the laptop.
+
+      Setup may prompt for role-specific permissions and can install the
+      Tailscale cask if it is missing.
+    EOS
   end
 
   test do
     assert_match "Turn a Mac Mini into a personal devserver", shell_output("#{bin}/eternalMac --help")
+    assert_match "Show the current server status", shell_output("#{bin}/eternalMac status --help")
   end
 end

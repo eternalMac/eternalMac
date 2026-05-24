@@ -336,7 +336,7 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -357,7 +357,7 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     );
     assert_eq!(
         config.client.as_ref().unwrap().server_ssh_user.as_deref(),
-        Some("kindshadow")
+        Some("devuser")
     );
     assert_eq!(
         config
@@ -394,11 +394,11 @@ fn client_setup_persists_sync_pairs_and_creates_mutagen_sessions() {
     assert!(paths.ssh_config_file.exists());
     assert!(paths
         .ssh_dir
-        .join("eternalmac_kindshadow_mac_mini_example_ts_net_ed25519")
+        .join("eternalmac_devuser_mac_mini_example_ts_net_ed25519")
         .exists());
     let ssh_config = fs::read_to_string(&paths.ssh_config_file).unwrap();
     assert!(ssh_config.contains("Host mac-mini.example.ts.net"));
-    assert!(ssh_config.contains("User kindshadow"));
+    assert!(ssh_config.contains("User devuser"));
     let client_plist = fs::read_to_string(&paths.client_plist).unwrap();
     assert!(client_plist.contains(
         std::env::current_exe()
@@ -540,11 +540,11 @@ fn client_setup_errors_when_server_ssh_port_is_unreachable() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
-                remote: "kindshadow@mac-mini.example.ts.net:~/project".into(),
+                remote: "devuser@mac-mini.example.ts.net:~/project".into(),
             }],
         },
     )
@@ -583,7 +583,7 @@ fn client_setup_skips_mutagen_create_when_matching_sync_already_exists() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -707,7 +707,7 @@ fn client_setup_fails_when_server_unload_returns_unexpected_error() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -758,7 +758,7 @@ fn client_setup_ignores_server_unload_not_loaded_error() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -911,7 +911,7 @@ fn client_setup_returns_error_and_keeps_persisted_state_when_launchctl_reports_f
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -970,7 +970,7 @@ fn client_setup_mutagen_failure_after_partial_creation_persists_progress() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![
                 SyncRootInput {
                     name: "project".into(),
@@ -1019,7 +1019,7 @@ fn client_setup_errors_when_config_snapshot_read_fails_with_non_not_found() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),
@@ -1056,7 +1056,7 @@ fn client_setup_rolls_back_config_when_state_write_fails() {
         &runner,
         ClientSetupInput {
             paired_server: "mac-mini.example.ts.net".into(),
-            server_ssh_user: "kindshadow".into(),
+            server_ssh_user: "devuser".into(),
             sync_roots: vec![SyncRootInput {
                 name: "project".into(),
                 local: "/Users/me/project".into(),

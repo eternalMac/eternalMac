@@ -85,8 +85,8 @@ fn tmux_session_parser_ignores_blank_lines() {
 #[test]
 fn ssh_sync_destination_uses_user_host_and_path() {
     assert_eq!(
-        build_sync_destination("kindshadow", "mac-mini.example.ts.net", "~/project"),
-        "kindshadow@mac-mini.example.ts.net:~/project"
+        build_sync_destination("devuser", "mac-mini.example.ts.net", "~/project"),
+        "devuser@mac-mini.example.ts.net:~/project"
     );
 }
 
@@ -107,15 +107,15 @@ fn ssh_port_probe_uses_nc_with_host_and_port_22() {
 #[test]
 fn managed_identity_paths_are_scoped_by_user_and_host() {
     let ssh_dir = std::path::Path::new("/Users/me/.ssh");
-    let paths = managed_identity_paths(ssh_dir, "mac-mini.example.ts.net", "kindshadow");
+    let paths = managed_identity_paths(ssh_dir, "mac-mini.example.ts.net", "devuser");
 
     assert_eq!(
         paths.private_key_path,
-        ssh_dir.join("eternalmac_kindshadow_mac_mini_example_ts_net_ed25519")
+        ssh_dir.join("eternalmac_devuser_mac_mini_example_ts_net_ed25519")
     );
     assert_eq!(
         paths.public_key_path,
-        ssh_dir.join("eternalmac_kindshadow_mac_mini_example_ts_net_ed25519.pub")
+        ssh_dir.join("eternalmac_devuser_mac_mini_example_ts_net_ed25519.pub")
     );
 }
 
@@ -123,15 +123,15 @@ fn managed_identity_paths_are_scoped_by_user_and_host() {
 fn managed_host_block_renders_expected_ssh_config() {
     let block = render_managed_host_block(
         "mac-mini.example.ts.net",
-        "kindshadow",
-        "/Users/me/.ssh/eternalmac_kindshadow_mac_mini_example_ts_net_ed25519",
+        "devuser",
+        "/Users/me/.ssh/eternalmac_devuser_mac_mini_example_ts_net_ed25519",
     );
 
     assert!(block.contains("# >>> eternalmac mac-mini.example.ts.net >>>"));
     assert!(block.contains("Host mac-mini.example.ts.net"));
-    assert!(block.contains("User kindshadow"));
+    assert!(block.contains("User devuser"));
     assert!(block.contains(
-        "IdentityFile /Users/me/.ssh/eternalmac_kindshadow_mac_mini_example_ts_net_ed25519"
+        "IdentityFile /Users/me/.ssh/eternalmac_devuser_mac_mini_example_ts_net_ed25519"
     ));
     assert!(block.contains("IdentitiesOnly yes"));
 }
@@ -139,7 +139,7 @@ fn managed_host_block_renders_expected_ssh_config() {
 #[test]
 fn upsert_managed_host_block_prepends_new_block() {
     let existing = "Host github.com\n  User git\n";
-    let block = render_managed_host_block("mac-mini.example.ts.net", "kindshadow", "/tmp/key");
+    let block = render_managed_host_block("mac-mini.example.ts.net", "devuser", "/tmp/key");
 
     let updated = upsert_managed_host_block(existing, "mac-mini.example.ts.net", &block);
 
@@ -157,12 +157,11 @@ Host mac-mini.example.ts.net\n\
 \n\
 Host github.com\n\
   User git\n";
-    let replacement =
-        render_managed_host_block("mac-mini.example.ts.net", "kindshadow", "/tmp/key");
+    let replacement = render_managed_host_block("mac-mini.example.ts.net", "devuser", "/tmp/key");
 
     let updated = upsert_managed_host_block(original, "mac-mini.example.ts.net", &replacement);
 
-    assert!(updated.contains("User kindshadow"));
+    assert!(updated.contains("User devuser"));
     assert!(!updated.contains("User olduser"));
     assert!(updated.contains("Host github.com"));
 }
@@ -187,7 +186,7 @@ fn ssh_batch_login_check_uses_batch_mode_and_true_probe() {
 #[test]
 fn interactive_authorize_key_args_disable_pubkey_and_send_remote_command() {
     let args = interactive_authorize_key_args(
-        "kindshadow",
+        "devuser",
         "mac-mini.example.ts.net",
         "ssh-ed25519 AAAAB3Nza key-comment",
     );
@@ -196,7 +195,7 @@ fn interactive_authorize_key_args_disable_pubkey_and_send_remote_command() {
     assert!(args.contains(&"StrictHostKeyChecking=accept-new".to_string()));
     assert!(args.contains(&"PreferredAuthentications=password,keyboard-interactive".to_string()));
     assert!(args.contains(&"PubkeyAuthentication=no".to_string()));
-    assert!(args.contains(&"kindshadow@mac-mini.example.ts.net".to_string()));
+    assert!(args.contains(&"devuser@mac-mini.example.ts.net".to_string()));
     assert!(args.last().unwrap().contains("authorized_keys"));
     assert!(args
         .last()

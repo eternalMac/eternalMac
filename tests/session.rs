@@ -172,7 +172,7 @@ fn session_list_uses_persisted_terminal_path() {
     save_client_config_with_connection(
         &store,
         "mac-mini",
-        "kindshadow",
+        "devuser",
         "/opt/homebrew/bin/etterminal",
     );
     let runner = FakeRunner::success(
@@ -189,7 +189,7 @@ fn session_list_uses_persisted_terminal_path() {
             "et".into(),
             build_remote_command_args_with_options(
                 "mac-mini",
-                Some("kindshadow"),
+                Some("devuser"),
                 Some("/opt/homebrew/bin/etterminal"),
                 "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit"
             )
@@ -242,7 +242,7 @@ fn session_create_uses_persisted_terminal_path() {
     save_client_config_with_connection(
         &store,
         "mac-mini",
-        "kindshadow",
+        "devuser",
         "/opt/homebrew/bin/etterminal",
     );
     let runner = FakeRunner::success("");
@@ -256,7 +256,7 @@ fn session_create_uses_persisted_terminal_path() {
             "et".into(),
             build_remote_command_args_with_options(
                 "mac-mini",
-                Some("kindshadow"),
+                Some("devuser"),
                 Some("/opt/homebrew/bin/etterminal"),
                 "tmux new-session -d -s 'demo'"
             )

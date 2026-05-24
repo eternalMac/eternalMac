@@ -147,8 +147,8 @@ mod tests {
     #[test]
     fn remote_destination_is_built_from_user_host_and_path() {
         assert_eq!(
-            build_sync_destination("kindshadow", "mac-mini.example.ts.net", "~/project"),
-            "kindshadow@mac-mini.example.ts.net:~/project"
+            build_sync_destination("devuser", "mac-mini.example.ts.net", "~/project"),
+            "devuser@mac-mini.example.ts.net:~/project"
         );
     }
 }

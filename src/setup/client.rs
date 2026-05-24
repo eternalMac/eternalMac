@@ -680,7 +680,7 @@ mod tests {
             &paths,
             &runner,
             "mac-mini.example.ts.net",
-            "kindshadow",
+            "devuser",
             |_, _, _| {
                 *authorize_calls.borrow_mut() += 1;
                 Ok(())
@@ -692,7 +692,7 @@ mod tests {
         assert!(paths.ssh_config_file.exists());
         assert!(paths
             .ssh_dir
-            .join("eternalmac_kindshadow_mac_mini_example_ts_net_ed25519")
+            .join("eternalmac_devuser_mac_mini_example_ts_net_ed25519")
             .exists());
         assert!(runner.calls.borrow().iter().any(|(program, args)| {
             program == "ssh" && args == &batch_login_check_args("mac-mini.example.ts.net")
@@ -730,7 +730,7 @@ mod tests {
             &paths,
             &runner,
             "mac-mini.example.ts.net",
-            "kindshadow",
+            "devuser",
             |server_user, server_host, public_key| {
                 authorize_calls.borrow_mut().push((
                     server_user.to_string(),
@@ -743,7 +743,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(authorize_calls.borrow().len(), 1);
-        assert_eq!(authorize_calls.borrow()[0].0, "kindshadow");
+        assert_eq!(authorize_calls.borrow()[0].0, "devuser");
         assert_eq!(authorize_calls.borrow()[0].1, "mac-mini.example.ts.net");
         assert!(authorize_calls.borrow()[0].2.starts_with("ssh-ed25519 "));
         assert_eq!(

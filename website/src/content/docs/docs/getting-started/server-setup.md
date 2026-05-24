@@ -14,7 +14,7 @@ Server setup verifies Tailscale, checks Remote Login availability, creates the d
 At the end, copy the printed Tailscale DNS name. You will use it on the laptop.
 
 ```bash
-Server DNS: dhruvils-mac-mini.example.ts.net
+Server DNS: mac-mini.example.ts.net
 ```
 
 Remote Login must be enabled in macOS because Eternal Terminal and Mutagen both rely on SSH during setup and handshaking.

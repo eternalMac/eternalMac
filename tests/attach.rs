@@ -102,8 +102,8 @@ fn attach_args_quote_session_names_with_spaces() {
 #[test]
 fn attach_args_escape_single_quotes_in_session_names() {
     assert_eq!(
-        build_attach_args("mac-mini", "dhruvil's session"),
-        vec!["mac-mini", "-c", "tmux attach -t 'dhruvil'\\''s session'"]
+        build_attach_args("mac-mini", "dev's session"),
+        vec!["mac-mini", "-c", "tmux attach -t 'dev'\\''s session'"]
     );
 }
 
@@ -112,7 +112,7 @@ fn attach_args_include_terminal_path_when_known() {
     assert_eq!(
         build_attach_args_with_options(
             "mac-mini",
-            Some("kindshadow"),
+            Some("devuser"),
             Some("/opt/homebrew/bin/etterminal"),
             "default"
         ),
@@ -158,7 +158,7 @@ fn attach_run_uses_persisted_terminal_path() {
     save_client_config_with_connection(
         &store,
         "mac-mini",
-        Some("kindshadow"),
+        Some("devuser"),
         Some("/opt/homebrew/bin/etterminal"),
     );
     let runner = FakeRunner::success();
@@ -172,7 +172,7 @@ fn attach_run_uses_persisted_terminal_path() {
         calls[0].1,
         build_attach_args_with_options(
             "mac-mini",
-            Some("kindshadow"),
+            Some("devuser"),
             Some("/opt/homebrew/bin/etterminal"),
             "default"
         )
@@ -188,7 +188,7 @@ fn attach_new_creates_session_then_attaches_to_it() {
     save_client_config_with_connection(
         &store,
         "mac-mini",
-        Some("kindshadow"),
+        Some("devuser"),
         Some("/opt/homebrew/bin/etterminal"),
     );
     let runner = FakeRunner::success();
@@ -202,7 +202,7 @@ fn attach_new_creates_session_then_attaches_to_it() {
         calls[0].1,
         build_new_session_args_with_options(
             "mac-mini",
-            Some("kindshadow"),
+            Some("devuser"),
             Some("/opt/homebrew/bin/etterminal"),
             "feature"
         )
@@ -215,7 +215,7 @@ fn attach_new_creates_session_then_attaches_to_it() {
         interactive_calls[0].1,
         build_attach_args_with_options(
             "mac-mini",
-            Some("kindshadow"),
+            Some("devuser"),
             Some("/opt/homebrew/bin/etterminal"),
             "feature"
         )

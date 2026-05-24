@@ -21,7 +21,7 @@ fn config_round_trip_preserves_server_dns_and_client_sync_pairs() {
         }),
         client: Some(ClientConfig {
             paired_server: "server-1".into(),
-            server_ssh_user: Some("kindshadow".into()),
+            server_ssh_user: Some("devuser".into()),
             server_etterminal_path: Some("/opt/homebrew/bin/etterminal".into()),
             pinned: vec!["workspace".into()],
             sync_pairs: vec![SyncPairConfig {
@@ -49,7 +49,7 @@ fn config_round_trip_preserves_server_dns_and_client_sync_pairs() {
     assert_eq!(loaded.client.as_ref().unwrap().sync_pairs.len(), 1);
     assert_eq!(
         loaded.client.as_ref().unwrap().server_ssh_user.as_deref(),
-        Some("kindshadow")
+        Some("devuser")
     );
     assert_eq!(
         loaded

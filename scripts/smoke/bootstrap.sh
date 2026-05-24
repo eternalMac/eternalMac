@@ -6,6 +6,14 @@ repo_root="$(cd -- "${script_dir}/../.." && pwd)"
 
 cd "$repo_root"
 
+original_home="${HOME}"
+smoke_home="$(mktemp -d)"
+trap 'rm -rf "$smoke_home"' EXIT
+
+export CARGO_HOME="${CARGO_HOME:-${original_home}/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-${original_home}/.rustup}"
+export HOME="$smoke_home"
+
 cargo build
 ./target/debug/eternalMac --help | grep -q "status"
 ./target/debug/eternalMac status --help >/dev/null
