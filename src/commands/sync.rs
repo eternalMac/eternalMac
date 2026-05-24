@@ -2,10 +2,11 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::app::context::AppContext;
 use crate::config::store::Store;
-use crate::model::config::SyncPairConfig;
+use crate::model::config::{ClientConfig, SyncPairConfig};
 use crate::process::runner::{Output, Runner};
 use crate::sync::service::build_pair;
 use crate::tooling::mutagen::{build_create_args, list_args};
+use crate::tooling::ssh::build_sync_destination;
 
 fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
     let output = runner.run(program, args)?;
@@ -21,6 +22,40 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
     Err(anyhow!(message))
 }
 
+fn has_remote_host(endpoint: &str) -> bool {
+    if endpoint.contains("://") {
+        return true;
+    }
+
+    if endpoint.starts_with('/') || endpoint.starts_with("~/") || endpoint.starts_with("./") {
+        return false;
+    }
+
+    let Some(colon_index) = endpoint.find(':') else {
+        return false;
+    };
+
+    endpoint
+        .find('/')
+        .is_none_or(|slash_index| colon_index < slash_index)
+}
+
+fn resolve_remote_endpoint(client: &ClientConfig, remote: &str) -> String {
+    if has_remote_host(remote) {
+        return remote.into();
+    }
+
+    if let Some(server_ssh_user) = client
+        .server_ssh_user
+        .as_deref()
+        .filter(|server_ssh_user| !server_ssh_user.trim().is_empty())
+    {
+        return build_sync_destination(server_ssh_user, &client.paired_server, remote);
+    }
+
+    format!("{}:{remote}", client.paired_server)
+}
+
 pub fn add_with<R: Runner>(
     store: &Store,
     runner: &R,
@@ -28,14 +63,14 @@ pub fn add_with<R: Runner>(
     local: &str,
     remote: &str,
 ) -> Result<SyncPairConfig> {
-    let pair = build_pair(name, local, remote, None);
-
     let mut config = store
         .load_config()
         .context("loading client config for sync add")?;
     let client = config.client.as_mut().context(
         "sync add requires client config; run `eternalMac setup client` on this machine first",
     )?;
+    let remote = resolve_remote_endpoint(client, remote);
+    let pair = build_pair(name, local, &remote, None);
 
     let sync_pair = SyncPairConfig {
         name: pair.name,

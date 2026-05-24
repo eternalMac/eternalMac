@@ -47,13 +47,21 @@ impl Runner for FakeRunner {
 }
 
 fn save_client_config(store: &Store, sync_pairs: Vec<SyncPairConfig>) {
+    save_client_config_with_server_user(store, None, sync_pairs);
+}
+
+fn save_client_config_with_server_user(
+    store: &Store,
+    server_ssh_user: Option<&str>,
+    sync_pairs: Vec<SyncPairConfig>,
+) {
     store
         .save_config(&Config {
             role: Role::Client,
             server: None,
             client: Some(ClientConfig {
                 paired_server: "mac-mini".into(),
-                server_ssh_user: None,
+                server_ssh_user: server_ssh_user.map(str::to_string),
                 server_etterminal_path: None,
                 pinned: vec![],
                 sync_pairs,
@@ -145,7 +153,7 @@ fn sync_add_runs_mutagen_create_and_persists_pair() {
         calls.as_slice(),
         &[(
             "mutagen".into(),
-            build_create_args("project", "~/src/project", "~/remote/project")
+            build_create_args("project", "~/src/project", "mac-mini:~/remote/project")
         )]
     );
     let config = store.load_config().unwrap();
@@ -156,6 +164,72 @@ fn sync_add_runs_mutagen_create_and_persists_pair() {
     assert_eq!(saved.local, sync_pair.local);
     assert_eq!(saved.remote, sync_pair.remote);
     assert_eq!(saved.mode, sync_pair.mode);
+}
+
+#[test]
+fn sync_add_resolves_bare_remote_path_against_paired_server() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_server_user(&store, Some("kindshadow"), vec![]);
+    let runner = FakeRunner::success("");
+
+    let sync_pair = add_with(
+        &store,
+        &runner,
+        "project",
+        "~/src/project",
+        "~/remote/project",
+    )
+    .unwrap();
+
+    assert_eq!(sync_pair.remote, "kindshadow@mac-mini:~/remote/project");
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "mutagen".into(),
+            build_create_args(
+                "project",
+                "~/src/project",
+                "kindshadow@mac-mini:~/remote/project"
+            )
+        )]
+    );
+    let config = store.load_config().unwrap();
+    let saved_pairs = config.client.unwrap().sync_pairs;
+    assert_eq!(
+        saved_pairs[0].remote,
+        "kindshadow@mac-mini:~/remote/project"
+    );
+}
+
+#[test]
+fn sync_add_preserves_full_remote_endpoint() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_server_user(&store, Some("kindshadow"), vec![]);
+    let runner = FakeRunner::success("");
+
+    let sync_pair = add_with(
+        &store,
+        &runner,
+        "project",
+        "~/src/project",
+        "other@devbox:~/remote/project",
+    )
+    .unwrap();
+
+    assert_eq!(sync_pair.remote, "other@devbox:~/remote/project");
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "mutagen".into(),
+            build_create_args("project", "~/src/project", "other@devbox:~/remote/project")
+        )]
+    );
 }
 
 #[test]
@@ -182,7 +256,7 @@ fn sync_add_returns_clear_error_on_non_zero_exit_after_persisting_pair() {
     assert_eq!(saved_pairs.len(), 1);
     assert_eq!(saved_pairs[0].name, "project");
     assert_eq!(saved_pairs[0].local, "~/src/project");
-    assert_eq!(saved_pairs[0].remote, "~/remote/project");
+    assert_eq!(saved_pairs[0].remote, "mac-mini:~/remote/project");
     assert_eq!(saved_pairs[0].mode, SYNC_MODE_TWO_WAY_RESOLVED);
 }
 
