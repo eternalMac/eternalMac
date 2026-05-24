@@ -222,26 +222,12 @@ pre {
   background: var(--surface);
 }
 
-.macbook-sketch {
-  aspect-ratio: 4 / 3;
-  border: 10px solid #1f2937;
-  border-bottom-width: 30px;
-  border-radius: 14px;
-  background:
-    linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.08)),
-    linear-gradient(135deg, #111827, #475569);
-  position: relative;
-}
-
-.macbook-sketch::after {
-  content: "";
-  position: absolute;
-  left: 24%;
-  right: 24%;
-  bottom: -23px;
-  height: 4px;
-  border-radius: 99px;
-  background: #94a3b8;
+.meme-image {
+  display: block;
+  width: 100%;
+  border: 1px solid rgba(18, 17, 15, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 18px 44px rgba(18, 17, 15, 0.18);
 }
 
 .meme-copy p {
