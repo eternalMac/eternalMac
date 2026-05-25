@@ -10,6 +10,45 @@ pub fn build_sync_destination(user: &str, host: &str, path: &str) -> String {
     format!("{user}@{host}:{path}")
 }
 
+pub fn validate_ssh_host(value: &str) -> Result<(), String> {
+    validate_ssh_token(value, "SSH host", &['.', '-'])
+}
+
+pub fn validate_ssh_user(value: &str) -> Result<(), String> {
+    validate_ssh_token(value, "SSH username", &['.', '_', '-'])
+}
+
+fn validate_ssh_token(value: &str, label: &str, extra_allowed: &[char]) -> Result<(), String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(format!("{label} cannot be empty"));
+    }
+    if trimmed.starts_with('-') {
+        return Err(format!("{label} cannot start with '-'"));
+    }
+    if trimmed.chars().any(|character| character.is_whitespace()) {
+        return Err(format!("{label} cannot contain whitespace"));
+    }
+    if !trimmed
+        .chars()
+        .any(|character| character.is_ascii_alphanumeric())
+    {
+        return Err(format!(
+            "{label} must contain at least one letter or number"
+        ));
+    }
+    if let Some(character) = trimmed
+        .chars()
+        .find(|character| !character.is_ascii_alphanumeric() && !extra_allowed.contains(character))
+    {
+        return Err(format!(
+            "{label} contains unsupported character `{character}`"
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn port_probe_args(host: &str) -> Vec<String> {
     vec![
         "-G".into(),

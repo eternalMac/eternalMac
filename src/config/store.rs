@@ -4,6 +4,9 @@ use std::path::Path;
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
 use anyhow::{anyhow, Result};
 
 use crate::app::paths::Paths;
@@ -21,7 +24,7 @@ impl Store {
     }
 
     pub fn save_config(&self, config: &Config) -> Result<()> {
-        fs::create_dir_all(&self.paths.config_dir)?;
+        ensure_private_dir(&self.paths.config_dir)?;
         let serialized = toml::to_string_pretty(config)?;
         atomic_write(&self.paths.config_file, serialized.as_bytes())?;
         Ok(())
@@ -33,7 +36,7 @@ impl Store {
     }
 
     pub fn save_state(&self, state: &State) -> Result<()> {
-        fs::create_dir_all(&self.paths.state_dir)?;
+        ensure_private_dir(&self.paths.state_dir)?;
         let serialized = serde_json::to_string_pretty(state)?;
         atomic_write(&self.paths.state_file, serialized.as_bytes())?;
         Ok(())
@@ -43,6 +46,24 @@ impl Store {
         let raw = fs::read_to_string(&self.paths.state_file)?;
         Ok(serde_json::from_str(&raw)?)
     }
+}
+
+fn ensure_private_dir(path: &Path) -> Result<()> {
+    fs::create_dir_all(path)?;
+    #[cfg(unix)]
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+    Ok(())
+}
+
+#[cfg(unix)]
+fn set_private_file_permissions(path: &Path) -> Result<()> {
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_private_file_permissions(_path: &Path) -> Result<()> {
+    Ok(())
 }
 
 fn atomic_write(path: &Path, contents: &[u8]) -> Result<()> {
@@ -60,11 +81,12 @@ fn atomic_write(path: &Path, contents: &[u8]) -> Result<()> {
             ".{file_name}.tmp-{}-{epoch_nanos}-{attempt}",
             process::id()
         ));
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&candidate)
-        {
+        let mut options = OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        options.mode(0o600);
+
+        match options.open(&candidate) {
             Ok(mut temp_file) => {
                 if let Err(write_error) = temp_file
                     .write_all(contents)
@@ -79,6 +101,7 @@ fn atomic_write(path: &Path, contents: &[u8]) -> Result<()> {
                     let _ = fs::remove_file(&candidate);
                     return Err(rename_error.into());
                 }
+                set_private_file_permissions(path)?;
                 return Ok(());
             }
             Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,

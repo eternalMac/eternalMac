@@ -2,7 +2,7 @@ use anyhow::{anyhow, Context, Result};
 
 use crate::app::context::AppContext;
 use crate::config::store::Store;
-use crate::process::runner::{Output, Runner};
+use crate::process::runner::{command_failed, Output, Runner};
 use crate::tooling::et::{build_attach_args_with_options, build_new_session_args_with_options};
 
 const DEFAULT_SESSION: &str = "default";
@@ -31,12 +31,7 @@ fn run_checked<R: Runner>(
         return Ok(output);
     }
 
-    let mut message = format!("command failed: {program} {}", args.join(" "));
-    if !output.stderr.trim().is_empty() {
-        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
-    }
-
-    Err(anyhow!(message))
+    Err(command_failed(program, args, &output))
 }
 
 pub fn run_with<R: Runner>(

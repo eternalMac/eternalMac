@@ -36,6 +36,17 @@ impl FakeRunner {
             },
         }
     }
+
+    fn failure_with_streams(stdout: &str, stderr: &str) -> Self {
+        Self {
+            calls: RefCell::new(vec![]),
+            output: Output {
+                stdout: stdout.into(),
+                stderr: stderr.into(),
+                success: false,
+            },
+        }
+    }
 }
 
 impl Runner for FakeRunner {
@@ -275,6 +286,21 @@ fn session_create_returns_clear_error_on_non_zero_exit() {
     let error = create_with(&store, &runner, "demo").unwrap_err();
     assert!(error.to_string().contains("command failed: tmux"));
     assert!(error.to_string().contains("stderr: session exists"));
+}
+
+#[test]
+fn remote_session_list_error_includes_stdout_when_stderr_is_empty() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, None, Some(vec![]));
+    let runner = FakeRunner::failure_with_streams("unable to connect to paired server", "");
+
+    let error = list_with(&store, &runner).unwrap_err();
+    let message = error.to_string();
+
+    assert!(message.contains("command failed: et"));
+    assert!(message.contains("stdout: unable to connect to paired server"));
 }
 
 #[test]

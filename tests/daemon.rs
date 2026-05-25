@@ -9,6 +9,7 @@ use eternalmac::model::config::{
 };
 use eternalmac::model::state::{State, SyncPairState};
 use eternalmac::process::runner::{Output, Runner};
+use eternalmac::tooling::et::build_remote_command_args_with_options;
 use eternalmac::tooling::mutagen::list_args;
 use eternalmac::tooling::tailscale::status_args;
 use eternalmac::tooling::tmux::{list_sessions_args, new_session_args};
@@ -185,6 +186,77 @@ fn client_run_once_refreshes_sync_state_from_config_and_mutagen_listing() {
     assert!(calls
         .iter()
         .any(|(program, args)| program == "mutagen" && args == &list_args()));
+}
+
+#[test]
+fn client_run_once_marks_server_unreachable_when_et_probe_fails() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let et_probe_args = build_remote_command_args_with_options(
+        "mac-mini.example.ts.net",
+        Some("devuser"),
+        Some("/opt/homebrew/bin/etterminal"),
+        "true",
+    );
+    let runner = FakeRunner::default()
+        .with_response(
+            "tailscale",
+            status_args(),
+            Output {
+                stdout:
+                    r#"{"BackendState":"Running","Self":{"DNSName":"mac-mini.example.ts.net"}}"#
+                        .into(),
+                stderr: String::new(),
+                success: true,
+            },
+        )
+        .with_response(
+            "mutagen",
+            list_args(),
+            Output {
+                stdout: String::new(),
+                stderr: String::new(),
+                success: true,
+            },
+        )
+        .with_response(
+            "et",
+            et_probe_args.clone(),
+            Output {
+                stdout: "unable to connect".into(),
+                stderr: String::new(),
+                success: false,
+            },
+        );
+
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: Some("devuser".into()),
+                server_etterminal_path: Some("/opt/homebrew/bin/etterminal".into()),
+                pinned: vec![],
+                sync_pairs: vec![],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+
+    eternalmac::daemon::client::run_once(&paths, &store, &runner).unwrap();
+
+    let state = store.load_state().unwrap();
+    assert!(state.tailscale_ok);
+    assert!(!state.server_reachable);
+    assert!(!state.healthy);
+    assert!(state.summary.contains("Eternal Terminal"));
+
+    let calls = runner.calls.borrow();
+    assert!(calls
+        .iter()
+        .any(|(program, args)| program == "et" && args == &et_probe_args));
 }
 
 #[test]

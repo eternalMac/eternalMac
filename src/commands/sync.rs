@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 use crate::app::context::AppContext;
 use crate::config::store::Store;
 use crate::model::config::{ClientConfig, SyncPairConfig};
-use crate::process::runner::{Output, Runner};
+use crate::process::runner::{command_failed, Output, Runner};
 use crate::sync::service::build_pair;
 use crate::tooling::mutagen::{build_create_args, list_args};
 use crate::tooling::ssh::build_sync_destination;
@@ -14,12 +14,7 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
         return Ok(output);
     }
 
-    let mut message = format!("command failed: {program} {}", args.join(" "));
-    if !output.stderr.trim().is_empty() {
-        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
-    }
-
-    Err(anyhow!(message))
+    Err(command_failed(program, args, &output))
 }
 
 fn has_remote_host(endpoint: &str) -> bool {
@@ -78,18 +73,27 @@ pub fn add_with<R: Runner>(
         remote: pair.remote,
         mode: pair.mode,
     };
-    if let Some(existing) = client
+    let existing_index = client
         .sync_pairs
-        .iter_mut()
-        .find(|existing| existing.name == sync_pair.name)
-    {
+        .iter()
+        .position(|existing| existing.name == sync_pair.name);
+    if let Some(existing) = existing_index.and_then(|index| client.sync_pairs.get(index)) {
         if existing.local != sync_pair.local || existing.remote != sync_pair.remote {
             return Err(anyhow!(
                 "sync add found existing pair `{}` with different endpoints; use a different name or remove the existing pair first",
                 sync_pair.name
             ));
         }
-        *existing = sync_pair.clone();
+    }
+
+    run_checked(
+        runner,
+        "mutagen",
+        &build_create_args(&sync_pair.name, &sync_pair.local, &sync_pair.remote),
+    )?;
+
+    if let Some(index) = existing_index {
+        client.sync_pairs[index] = sync_pair.clone();
     } else {
         client.sync_pairs.push(sync_pair.clone());
     }
@@ -97,12 +101,6 @@ pub fn add_with<R: Runner>(
     store
         .save_config(&config)
         .context("saving client config after sync add")?;
-
-    run_checked(
-        runner,
-        "mutagen",
-        &build_create_args(&sync_pair.name, &sync_pair.local, &sync_pair.remote),
-    )?;
 
     Ok(sync_pair)
 }

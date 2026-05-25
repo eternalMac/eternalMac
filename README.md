@@ -99,6 +99,8 @@ eternalMac status
 eternalMac doctor
 ```
 
+`eternalMac doctor` exits non-zero when it prints issues, making it suitable for release smoke checks and automation gates.
+
 ## Development
 
 Build:

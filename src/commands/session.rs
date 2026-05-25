@@ -3,7 +3,7 @@ use anyhow::{anyhow, Context, Result};
 use crate::app::context::AppContext;
 use crate::config::store::Store;
 use crate::model::config::Config;
-use crate::process::runner::{Output, Runner};
+use crate::process::runner::{command_failed, Output, Runner};
 use crate::session::service;
 use crate::tooling::et::{
     build_list_sessions_args_with_options as build_remote_list_sessions_args,
@@ -18,12 +18,7 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
         return Ok(output);
     }
 
-    let mut message = format!("command failed: {program} {}", args.join(" "));
-    if !output.stderr.trim().is_empty() {
-        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
-    }
-
-    Err(anyhow!(message))
+    Err(command_failed(program, args, &output))
 }
 
 enum SessionExecutionTarget<'a> {

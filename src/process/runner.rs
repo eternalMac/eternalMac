@@ -2,7 +2,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::process::Command;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 
 #[derive(Debug, Clone)]
 pub struct Output {
@@ -17,6 +17,21 @@ pub trait Runner {
     fn run_interactive(&self, program: &str, args: &[String]) -> Result<Output> {
         self.run(program, args)
     }
+}
+
+pub fn command_failed(program: &str, args: &[String], output: &Output) -> anyhow::Error {
+    let mut message = format!("command failed: {program} {}", args.join(" "));
+    let stdout = output.stdout.trim();
+    let stderr = output.stderr.trim();
+
+    if !stdout.is_empty() {
+        message.push_str(&format!("; stdout: {stdout}"));
+    }
+    if !stderr.is_empty() {
+        message.push_str(&format!("; stderr: {stderr}"));
+    }
+
+    anyhow!(message)
 }
 
 #[derive(Debug, Default, Clone)]

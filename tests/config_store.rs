@@ -5,6 +5,9 @@ use eternalmac::model::config::{
 };
 use eternalmac::model::state::State;
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 #[test]
 fn config_round_trip_preserves_server_dns_and_client_sync_pairs() {
     let tempdir = tempfile::tempdir().unwrap();
@@ -125,4 +128,62 @@ fn save_state_writes_state_file_to_state_location() {
     assert_eq!(loaded.daemon_heartbeat_unix, 1_714_000_000);
     assert_eq!(loaded.known_sessions, vec!["default", "sync"]);
     assert_eq!(loaded.syncs[0].status, "synced");
+}
+
+#[cfg(unix)]
+#[test]
+fn save_config_forces_owner_only_file_and_directory_permissions() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+
+    store
+        .save_config(&Config {
+            role: Role::Server,
+            server: Some(ServerConfig {
+                host_label: "mac-mini".into(),
+                default_session: "default".into(),
+                boot_sessions: vec!["default".into()],
+                tailscale_dns: Some("eternalmac.local".into()),
+            }),
+            client: None,
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+
+    let file_mode = paths.config_file.metadata().unwrap().permissions().mode() & 0o777;
+    let dir_mode = paths.config_dir.metadata().unwrap().permissions().mode() & 0o777;
+
+    assert_eq!(file_mode, 0o600);
+    assert_eq!(dir_mode & 0o077, 0);
+}
+
+#[cfg(unix)]
+#[test]
+fn save_state_forces_owner_only_file_and_directory_permissions() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+
+    store
+        .save_state(&State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "ok".into(),
+            tailscale_dns: Some("eternalmac.local".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: 1_714_000_000,
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    let file_mode = paths.state_file.metadata().unwrap().permissions().mode() & 0o777;
+    let dir_mode = paths.state_dir.metadata().unwrap().permissions().mode() & 0o777;
+
+    assert_eq!(file_mode, 0o600);
+    assert_eq!(dir_mode & 0o077, 0);
 }

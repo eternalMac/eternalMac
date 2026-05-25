@@ -2,7 +2,7 @@ use anyhow::Result;
 use dialoguer::{Confirm, Input};
 
 use crate::setup::client::SyncRootInput;
-use crate::tooling::ssh::build_sync_destination;
+use crate::tooling::ssh::{build_sync_destination, validate_ssh_host, validate_ssh_user};
 
 fn validate_non_empty_trimmed(value: &str, field_label: &str) -> std::result::Result<(), String> {
     if value.trim().is_empty() {
@@ -14,7 +14,10 @@ fn validate_non_empty_trimmed(value: &str, field_label: &str) -> std::result::Re
 pub fn prompt_server_dns(prefilled: Option<String>) -> Result<String> {
     let mut prompt = Input::<String>::new()
         .with_prompt("Server Tailscale DNS name")
-        .validate_with(|input: &String| validate_non_empty_trimmed(input, "Server DNS"));
+        .validate_with(|input: &String| {
+            validate_non_empty_trimmed(input, "Server DNS")?;
+            validate_ssh_host(input)
+        });
     if let Some(prefilled) = prefilled {
         prompt = prompt.with_initial_text(prefilled);
     }
@@ -24,7 +27,10 @@ pub fn prompt_server_dns(prefilled: Option<String>) -> Result<String> {
 pub fn prompt_server_ssh_user(prefilled: Option<String>) -> Result<String> {
     let mut prompt = Input::<String>::new()
         .with_prompt("Server SSH username")
-        .validate_with(|input: &String| validate_non_empty_trimmed(input, "Server SSH username"));
+        .validate_with(|input: &String| {
+            validate_non_empty_trimmed(input, "Server SSH username")?;
+            validate_ssh_user(input)
+        });
     if let Some(prefilled) = prefilled {
         prompt = prompt.with_initial_text(prefilled);
     }

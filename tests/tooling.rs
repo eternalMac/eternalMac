@@ -2,6 +2,7 @@ use eternalmac::tooling::brew::{install_cask_args, install_formula_args};
 use eternalmac::tooling::ssh::{
     batch_login_check_args, build_sync_destination, interactive_authorize_key_args,
     managed_identity_paths, port_probe_args, render_managed_host_block, upsert_managed_host_block,
+    validate_ssh_host, validate_ssh_user,
 };
 use eternalmac::tooling::tailscale::{detect_variant, parse_status_json, Variant};
 use eternalmac::tooling::tmux::parse_sessions;
@@ -88,6 +89,23 @@ fn ssh_sync_destination_uses_user_host_and_path() {
         build_sync_destination("devuser", "mac-mini.example.ts.net", "~/project"),
         "devuser@mac-mini.example.ts.net:~/project"
     );
+}
+
+#[test]
+fn ssh_validation_accepts_safe_tailnet_host_and_user() {
+    assert!(validate_ssh_host("mac-mini.example.ts.net").is_ok());
+    assert!(validate_ssh_user("devuser").is_ok());
+    assert!(validate_ssh_user("dev.user-1").is_ok());
+}
+
+#[test]
+fn ssh_validation_rejects_values_that_can_corrupt_ssh_config() {
+    assert!(validate_ssh_host("mac-mini\nHost evil").is_err());
+    assert!(validate_ssh_host("devuser@mac-mini").is_err());
+    assert!(validate_ssh_host("mac-mini:22").is_err());
+    assert!(validate_ssh_user("devuser\nIdentityFile /tmp/key").is_err());
+    assert!(validate_ssh_user("dev:user").is_err());
+    assert!(validate_ssh_user("dev@user").is_err());
 }
 
 #[test]

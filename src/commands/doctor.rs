@@ -16,5 +16,5 @@ pub fn run() -> Result<()> {
         println!("{issue}");
     }
 
-    Ok(())
+    std::process::exit(1);
 }

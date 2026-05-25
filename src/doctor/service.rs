@@ -49,10 +49,32 @@ fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Re
                 );
             }
 
+            let issue_count_before_role_health = issues.len();
+            if !state.daemon_healthy {
+                issues.push(format!("daemon unhealthy: {}", state.summary));
+            }
+
             if matches!(config.role, Role::Client) {
+                if !state.tailscale_ok {
+                    issues.push("tailscale not running".to_string());
+                }
+                if !state.server_reachable {
+                    let paired_server = config
+                        .client
+                        .as_ref()
+                        .map(|client| client.paired_server.as_str())
+                        .unwrap_or("unknown");
+                    issues.push(format!(
+                        "paired server unreachable over Eternal Terminal: {paired_server}"
+                    ));
+                }
                 for sync in state.syncs.iter().filter(|sync| sync.status != "active") {
                     issues.push(format!("sync {}: {}", sync.status, sync.name));
                 }
+            }
+
+            if !state.healthy && issues.len() == issue_count_before_role_health {
+                issues.push(format!("daemon degraded: {}", state.summary));
             }
         }
         Err(error) if is_not_found(&error) => issues.push(state_missing_issue(config)),

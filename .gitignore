@@ -1,4 +1,5 @@
 .DS_Store
+/.codex/
 /docs/
 /Initial_Design.md
 /spec.md

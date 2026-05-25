@@ -22,7 +22,7 @@ fn doctor_reports_missing_config_on_unconfigured_machine() {
         .env("HOME", tempdir.path())
         .args(["doctor"])
         .assert()
-        .success()
+        .failure()
         .stdout(contains(
             "config missing: run `eternalMac setup server` or `eternalMac setup client`",
         ));
@@ -52,7 +52,7 @@ fn doctor_reports_missing_state_when_config_exists() {
         .env("HOME", tempdir.path())
         .args(["doctor"])
         .assert()
-        .success()
+        .failure()
         .stdout(contains(
             "state missing: re-run `eternalMac setup server` to restore local state",
         ));
@@ -97,7 +97,7 @@ fn doctor_reports_stale_daemon_heartbeat() {
         .env("HOME", tempdir.path())
         .args(["doctor"])
         .assert()
-        .success()
+        .failure()
         .stdout(contains("daemon heartbeat stale"));
 }
 
@@ -147,6 +147,96 @@ fn doctor_reports_degraded_sync_state_for_client() {
         .env("HOME", tempdir.path())
         .args(["doctor"])
         .assert()
-        .success()
+        .failure()
         .stdout(contains("sync degraded: notes"));
+}
+
+#[test]
+fn doctor_reports_client_server_unreachable() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: Some("devuser".into()),
+                server_etterminal_path: Some("/opt/homebrew/bin/etterminal".into()),
+                pinned: vec![],
+                sync_pairs: vec![],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: false,
+            healthy: false,
+            summary: "client daemon degraded: Eternal Terminal cannot reach paired server".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: current_unix_seconds(),
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .env("HOME", tempdir.path())
+        .args(["doctor"])
+        .assert()
+        .failure()
+        .stdout(contains(
+            "paired server unreachable over Eternal Terminal: mac-mini.example.ts.net",
+        ));
+}
+
+#[test]
+fn doctor_exits_success_when_no_issues_are_found() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    store
+        .save_config(&Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini.example.ts.net".into(),
+                server_ssh_user: Some("devuser".into()),
+                server_etterminal_path: Some("/opt/homebrew/bin/etterminal".into()),
+                pinned: vec![],
+                sync_pairs: vec![],
+            }),
+            session: SessionConfig { auto_attach: true },
+        })
+        .unwrap();
+    store
+        .save_state(&State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "client daemon healthy".into(),
+            tailscale_dns: Some("mac-mini.example.ts.net".into()),
+            daemon_healthy: true,
+            daemon_heartbeat_unix: current_unix_seconds(),
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: vec![],
+        })
+        .unwrap();
+
+    Command::cargo_bin("eternalMac")
+        .unwrap()
+        .env("HOME", tempdir.path())
+        .args(["doctor"])
+        .assert()
+        .success()
+        .stdout(contains("no issues"));
 }

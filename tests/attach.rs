@@ -39,6 +39,18 @@ impl FakeRunner {
             },
         }
     }
+
+    fn failure_with_streams(stdout: &str, stderr: &str) -> Self {
+        Self {
+            calls: RefCell::new(vec![]),
+            interactive_calls: RefCell::new(vec![]),
+            output: Output {
+                stdout: stdout.into(),
+                stderr: stderr.into(),
+                success: false,
+            },
+        }
+    }
 }
 
 impl Runner for FakeRunner {
@@ -235,6 +247,22 @@ fn attach_new_does_not_attach_when_session_creation_fails() {
 
     assert!(message.contains("command failed: et"));
     assert!(message.contains("stderr: duplicate session"));
+    assert!(runner.interactive_calls.borrow().is_empty());
+}
+
+#[test]
+fn attach_new_error_includes_stdout_when_stderr_is_empty() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config(&store, "mac-mini");
+    let runner = FakeRunner::failure_with_streams("et could not reach mac-mini", "");
+
+    let error = run_with(&store, &runner, None, Some("feature")).unwrap_err();
+    let message = error.to_string();
+
+    assert!(message.contains("command failed: et"));
+    assert!(message.contains("stdout: et could not reach mac-mini"));
     assert!(runner.interactive_calls.borrow().is_empty());
 }
 

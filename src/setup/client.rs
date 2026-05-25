@@ -21,6 +21,7 @@ use crate::tooling::mutagen::{
 use crate::tooling::ssh::{
     batch_login_check_args, etterminal_path_probe_args, interactive_authorize_key_args,
     managed_identity_paths, port_probe_args, render_managed_host_block, upsert_managed_host_block,
+    validate_ssh_host, validate_ssh_user,
 };
 use crate::tooling::tailscale::{parse_status_json, status_args};
 
@@ -471,6 +472,11 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
     preflight: ClientPreflight,
     input: ClientSetupInput,
 ) -> Result<ClientSetupSummary> {
+    validate_ssh_host(&input.paired_server)
+        .map_err(|error| anyhow!("invalid paired server: {error}"))?;
+    validate_ssh_user(&input.server_ssh_user)
+        .map_err(|error| anyhow!("invalid server SSH username: {error}"))?;
+
     let tailscale_ok = preflight.tailscale_ok;
     verify_server_ssh_port(runner, &input.paired_server)?;
     ensure_noninteractive_server_ssh(paths, runner, &input.paired_server, &input.server_ssh_user)?;

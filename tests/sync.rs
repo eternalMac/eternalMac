@@ -230,7 +230,7 @@ fn sync_add_preserves_full_remote_endpoint() {
 }
 
 #[test]
-fn sync_add_returns_clear_error_on_non_zero_exit_after_persisting_pair() {
+fn sync_add_returns_clear_error_on_non_zero_exit_without_persisting_pair() {
     let tempdir = tempfile::tempdir().unwrap();
     let paths = Paths::new(tempdir.path().to_path_buf());
     let store = Store::new(paths);
@@ -250,11 +250,7 @@ fn sync_add_returns_clear_error_on_non_zero_exit_after_persisting_pair() {
     assert!(error.to_string().contains("stderr: daemon unavailable"));
     let config = store.load_config().unwrap();
     let saved_pairs = config.client.unwrap().sync_pairs;
-    assert_eq!(saved_pairs.len(), 1);
-    assert_eq!(saved_pairs[0].name, "project");
-    assert_eq!(saved_pairs[0].local, "~/src/project");
-    assert_eq!(saved_pairs[0].remote, "mac-mini:~/remote/project");
-    assert_eq!(saved_pairs[0].mode, SYNC_MODE_TWO_WAY_RESOLVED);
+    assert!(saved_pairs.is_empty());
 }
 
 #[test]

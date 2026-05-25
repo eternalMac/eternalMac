@@ -7,7 +7,8 @@ use crate::config::store::Store;
 use crate::model::config::Role;
 use crate::model::config::SyncPairConfig;
 use crate::model::state::{State, SyncPairState};
-use crate::process::runner::{Output, Runner};
+use crate::process::runner::{command_failed, Output, Runner};
+use crate::tooling::et::build_remote_command_args_with_options;
 use crate::tooling::mutagen::{list_args, parse_list_output, ListedSession};
 use crate::tooling::tailscale::{parse_status_json, status_args};
 
@@ -42,12 +43,7 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
         return Ok(output);
     }
 
-    let mut message = format!("command failed: {program} {}", args.join(" "));
-    if !output.stderr.trim().is_empty() {
-        message.push_str(&format!("; stderr: {}", output.stderr.trim()));
-    }
-
-    Err(anyhow!(message))
+    Err(command_failed(program, args, &output))
 }
 
 fn current_unix_seconds() -> Result<i64> {
@@ -113,6 +109,22 @@ fn sync_status(parsed_syncs: &[ListedSession], sync_pair: &SyncPairConfig) -> St
     "degraded".into()
 }
 
+fn health_summary(tailscale_ok: bool, server_reachable: bool, healthy: bool) -> String {
+    if healthy {
+        return "client daemon healthy".into();
+    }
+
+    if !tailscale_ok {
+        return "client daemon degraded: Tailscale is not running".into();
+    }
+
+    if !server_reachable {
+        return "client daemon degraded: Eternal Terminal cannot reach paired server".into();
+    }
+
+    "client daemon degraded".into()
+}
+
 pub fn save_failure_state(store: &Store, error: &anyhow::Error) -> Result<()> {
     let config = store
         .load_config()
@@ -169,18 +181,25 @@ pub fn run_once<R: Runner>(_paths: &Paths, store: &Store, runner: &R) -> Result<
         })
         .collect::<Vec<_>>();
     let all_syncs_active = syncs.iter().all(|sync| sync.status == "active");
-    let healthy = tailscale_ok && all_syncs_active;
+    let server_reachable = if tailscale_ok {
+        let args = build_remote_command_args_with_options(
+            &client.paired_server,
+            client.server_ssh_user.as_deref(),
+            client.server_etterminal_path.as_deref(),
+            "true",
+        );
+        runner.run("et", &args)?.success
+    } else {
+        false
+    };
+    let healthy = tailscale_ok && server_reachable && all_syncs_active;
 
     store.save_state(&State {
         role: config.role,
         tailscale_ok,
-        server_reachable: tailscale_ok,
+        server_reachable,
         healthy,
-        summary: if healthy {
-            "client daemon healthy".into()
-        } else {
-            "client daemon degraded".into()
-        },
+        summary: health_summary(tailscale_ok, server_reachable, healthy),
         tailscale_dns: tailscale_status.dns_name,
         daemon_healthy: true,
         daemon_heartbeat_unix: current_unix_seconds()?,

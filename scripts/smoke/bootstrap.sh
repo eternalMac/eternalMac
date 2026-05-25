@@ -18,4 +18,8 @@ cargo build
 ./target/debug/eternalMac --help | grep -q "status"
 ./target/debug/eternalMac status --help >/dev/null
 ./target/debug/eternalMac doctor --help >/dev/null
-./target/debug/eternalMac doctor | grep -q "config missing"
+doctor_output="$(./target/debug/eternalMac doctor 2>&1)" && {
+  echo "doctor unexpectedly succeeded on an unconfigured HOME"
+  exit 1
+}
+grep -q "config missing" <<<"$doctor_output"
