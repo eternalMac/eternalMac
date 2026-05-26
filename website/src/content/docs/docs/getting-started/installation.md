@@ -1,15 +1,15 @@
 ---
 title: Installation
-description: Install eternalMac from source while the Homebrew tap is being prepared.
+description: Install eternalMac from the public Homebrew tap.
 ---
 
-The first public release will use the project Homebrew tap:
+Install from the public Homebrew tap:
 
 ```bash
 brew install eternalmac/eternalmac/eternalmac
 ```
 
-Until that release is cut, run from source:
+For local development, build from source:
 
 ```bash
 git clone https://github.com/eternalMac/eternalMac

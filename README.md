@@ -10,7 +10,7 @@ The current MVP is a macOS-only Rust CLI that wraps:
 - Tailscale for private reachability
 - `launchd` for always-on background operation
 
-Project documentation is intentionally lean for now. Longer-form product docs will move to the project website later.
+Product docs: https://eternalmac.dev/docs
 
 ## Current Scope
 
@@ -41,41 +41,39 @@ The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen
 
 ## Quick Start
 
-Homebrew release path:
+Install from the eternalMac Homebrew tap:
 
 ```bash
 brew install eternalmac/eternalmac/eternalmac
 ```
 
-Source build:
-
-```bash
-cargo build
-```
-
 On the Mac Mini:
 
 ```bash
-cargo run -- setup server
+eternalMac setup server
 ```
 
 On the laptop:
 
 ```bash
-cargo run -- setup client --server <tailscale-dns-name>
+eternalMac setup client --server <tailscale-dns-name>
 ```
 
 Then attach:
 
 ```bash
-cargo run -- attach
+eternalMac attach
 ```
 
 Create a fresh remote session and attach immediately:
 
 ```bash
-cargo run -- attach -n feature-branch
+eternalMac attach -n feature-branch
 ```
+
+Full setup and troubleshooting docs:
+
+https://eternalmac.dev/docs
 
 ## Command Surface
 

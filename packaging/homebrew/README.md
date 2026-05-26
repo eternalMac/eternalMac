@@ -28,7 +28,7 @@ scripts/release/package-homebrew.sh \
 
 Copy the generated `Formula/eternalmac.rb` into the tap repository, commit it, and push the tap.
 
-Initial tap target:
+Public install command:
 
 ```bash
 brew install eternalmac/eternalmac/eternalmac
@@ -42,7 +42,7 @@ Audit before publishing:
 brew audit --strict --online eternalmac/eternalmac/eternalmac
 ```
 
-The audit requires public unauthenticated access to the formula homepage URL, so it will fail while `https://github.com/eternalMac/eternalMac` is private or otherwise unreachable.
+The audit requires public unauthenticated access to the formula homepage URL and release asset URL.
 
 ## Notes
 
