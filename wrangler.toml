@@ -1,0 +1,6 @@
+name = "eternalmac"
+compatibility_date = "2026-05-26"
+
+[assets]
+directory = "./website/dist"
+not_found_handling = "404-page"
