@@ -28,8 +28,8 @@ eternalMac setup client --server <mac-mini-tailscale-dns>
 Run this on the Mac mini:
 
 ```bash
-brew services list | grep et
-brew services start et
+sudo brew services list | grep et
+sudo brew services start et
 nc -G 5 -z localhost 2022
 ```
 

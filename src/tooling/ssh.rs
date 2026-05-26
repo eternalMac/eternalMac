@@ -59,6 +59,13 @@ pub fn port_probe_args(host: &str) -> Vec<String> {
     ]
 }
 
+pub fn et_server_probe_args() -> Vec<String> {
+    vec![
+        "-c".into(),
+        "for _ in 1 2 3 4 5 6 7 8 9 10; do if nc -G 2 -z localhost 2022 >/dev/null 2>&1; then exit 0; fi; sleep 1; done; nc -G 2 -z localhost 2022".into(),
+    ]
+}
+
 pub fn managed_identity_paths(
     ssh_dir: &Path,
     server_host: &str,

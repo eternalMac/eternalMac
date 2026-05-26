@@ -9,10 +9,10 @@ use crate::config::store::Store;
 use crate::model::config::{Config, Role, ServerConfig, SessionConfig};
 use crate::model::state::State;
 use crate::platform::launchd::{write_plist, Definition};
-use crate::process::runner::{Output, Runner};
+use crate::process::runner::{command_failed, Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args, tap_args};
 use crate::tooling::dependencies::{required_formulae, MUTAGEN_TAP, TAILSCALE_CASK};
-use crate::tooling::ssh::port_probe_args;
+use crate::tooling::ssh::{et_server_probe_args, port_probe_args};
 use crate::tooling::tailscale::{parse_status_json, status_args, Status as TailscaleStatus};
 use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
 
@@ -36,6 +36,19 @@ fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<
     }
 
     Err(anyhow!(message))
+}
+
+fn run_interactive_checked<R: Runner>(
+    runner: &R,
+    program: &str,
+    args: &[String],
+) -> Result<Output> {
+    let output = runner.run_interactive(program, args)?;
+    if output.success {
+        return Ok(output);
+    }
+
+    Err(command_failed(program, args, &output))
 }
 
 fn is_expected_unload_absence(output: &Output) -> bool {
@@ -168,24 +181,24 @@ fn verify_remote_login<R: Runner>(runner: &R) -> Result<()> {
 }
 
 fn start_et_service<R: Runner>(runner: &R) -> Result<()> {
-    let args = vec!["services".into(), "start".into(), "et".into()];
-    run_checked(runner, "brew", &args).map(|_| ())
+    println!("Starting Eternal Terminal service with sudo; macOS may ask for your password.");
+    let args = vec![
+        "brew".into(),
+        "services".into(),
+        "start".into(),
+        "et".into(),
+    ];
+    run_interactive_checked(runner, "sudo", &args).map(|_| ())
 }
 
 fn verify_et_server<R: Runner>(runner: &R) -> Result<()> {
-    let args = vec![
-        "-G".into(),
-        "5".into(),
-        "-z".into(),
-        "localhost".into(),
-        "2022".into(),
-    ];
-    let output = runner.run("nc", &args)?;
+    let args = et_server_probe_args();
+    let output = runner.run("sh", &args)?;
     if output.success {
         return Ok(());
     }
 
-    let mut message = "Eternal Terminal server is not reachable on local port 2022 after `brew services start et`; run `brew services list` and check the `et` service before rerunning `eternalMac setup server`".to_string();
+    let mut message = "Eternal Terminal server is not reachable on local port 2022 after `sudo brew services start et`; run `sudo brew services list` and check the `et` service before rerunning `eternalMac setup server`".to_string();
     if !output.stderr.trim().is_empty() {
         message.push_str(&format!("; stderr: {}", output.stderr.trim()));
     }

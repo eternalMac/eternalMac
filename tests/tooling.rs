@@ -1,8 +1,8 @@
 use eternalmac::tooling::brew::{install_cask_args, install_formula_args};
 use eternalmac::tooling::ssh::{
-    batch_login_check_args, build_sync_destination, interactive_authorize_key_args,
-    managed_identity_paths, port_probe_args, render_managed_host_block, upsert_managed_host_block,
-    validate_ssh_host, validate_ssh_user,
+    batch_login_check_args, build_sync_destination, et_server_probe_args,
+    interactive_authorize_key_args, managed_identity_paths, port_probe_args,
+    render_managed_host_block, upsert_managed_host_block, validate_ssh_host, validate_ssh_user,
 };
 use eternalmac::tooling::tailscale::{detect_variant, parse_status_json, Variant};
 use eternalmac::tooling::tmux::parse_sessions;
@@ -120,6 +120,15 @@ fn ssh_port_probe_uses_nc_with_host_and_port_22() {
             "22".to_string(),
         ]
     );
+}
+
+#[test]
+fn et_server_probe_retries_local_port_2022() {
+    let args = et_server_probe_args();
+
+    assert_eq!(args[0], "-c");
+    assert!(args[1].contains("nc -G 2 -z localhost 2022"));
+    assert!(args[1].contains("sleep 1"));
 }
 
 #[test]

@@ -37,7 +37,7 @@ The tool currently assumes Homebrew-managed dependencies and installs or checks:
 - Homebrew-first workflow
 - Single-user personal devserver model
 
-The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen both rely on SSH for setup and handshaking. Client setup asks for the server SSH username, creates a dedicated passwordless `eternalMac` SSH key, authorizes it with a one-time password prompt when needed, and records the remote `etterminal` path used by ET.
+The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen both rely on SSH for setup and handshaking. Server setup may ask for your macOS password to start Homebrew's root Eternal Terminal service. Client setup asks for the server SSH username, creates a dedicated passwordless `eternalMac` SSH key, authorizes it with a one-time password prompt when needed, and records the remote `etterminal` path used by ET.
 
 ## Quick Start
 
