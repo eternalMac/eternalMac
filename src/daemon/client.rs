@@ -177,6 +177,9 @@ pub fn run_once<R: Runner>(_paths: &Paths, store: &Store, runner: &R) -> Result<
             local: sync_pair.local.clone(),
             remote: sync_pair.remote.clone(),
             mode: sync_pair.mode.clone(),
+            ignore_paths: sync_pair.ignore_paths.clone(),
+            kind: sync_pair.kind.clone(),
+            label: sync_pair.label.clone(),
             status: sync_status(&parsed_syncs, sync_pair),
         })
         .collect::<Vec<_>>();

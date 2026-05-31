@@ -15,8 +15,8 @@ use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args, tap_args};
 use crate::tooling::dependencies::{required_formulae, MUTAGEN_TAP, TAILSCALE_CASK};
 use crate::tooling::mutagen::{
-    build_create_args, list_args as mutagen_list_args, parse_list_output, ListedSession,
-    SYNC_MODE_TWO_WAY_RESOLVED,
+    build_create_args_with_ignores, list_args as mutagen_list_args, parse_list_output,
+    ListedSession, SYNC_MODE_TWO_WAY_RESOLVED,
 };
 use crate::tooling::ssh::{
     batch_login_check_args, etterminal_path_probe_args, interactive_authorize_key_args,
@@ -32,6 +32,9 @@ pub struct SyncRootInput {
     pub name: String,
     pub local: String,
     pub remote: String,
+    pub ignore_paths: Vec<String>,
+    pub kind: Option<String>,
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -490,6 +493,9 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
             local: root.local.clone(),
             remote: root.remote.clone(),
             mode: SYNC_MODE_TWO_WAY_RESOLVED.into(),
+            ignore_paths: root.ignore_paths.clone(),
+            kind: root.kind.clone(),
+            label: root.label.clone(),
         })
         .collect::<Vec<_>>();
 
@@ -512,6 +518,9 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
             local: pair.local.clone(),
             remote: pair.remote.clone(),
             mode: pair.mode.clone(),
+            ignore_paths: pair.ignore_paths.clone(),
+            kind: pair.kind.clone(),
+            label: pair.label.clone(),
             status: "pending".into(),
         })
         .collect::<Vec<_>>();
@@ -540,7 +549,12 @@ pub(crate) fn apply_client_setup_with_preflight<R: Runner>(
     let mut created_sync_count = 0usize;
     for (index, root) in input.sync_roots.iter().enumerate() {
         if !has_matching_existing_sync(&existing_syncs, root)? {
-            let args = build_create_args(&root.name, &root.local, &root.remote);
+            let args = build_create_args_with_ignores(
+                &root.name,
+                &root.local,
+                &root.remote,
+                &root.ignore_paths,
+            );
             run_checked(runner, "mutagen", &args)?;
         }
         sync_states[index].status = "created".into();

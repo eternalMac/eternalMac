@@ -14,6 +14,7 @@ pub mod daemon {
     pub mod client;
     pub mod server;
 }
+pub mod dotsync;
 pub mod model {
     pub mod config;
     pub mod state;

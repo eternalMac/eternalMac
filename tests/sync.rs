@@ -6,7 +6,9 @@ use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig, SyncPairConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::sync::service::build_pair;
-use eternalmac::tooling::mutagen::{build_create_args, list_args, SYNC_MODE_TWO_WAY_RESOLVED};
+use eternalmac::tooling::mutagen::{
+    build_create_args, build_create_args_with_ignores, list_args, SYNC_MODE_TWO_WAY_RESOLVED,
+};
 
 struct FakeRunner {
     calls: RefCell<Vec<(String, Vec<String>)>>,
@@ -114,6 +116,37 @@ fn mutagen_create_args_include_sync_mode_in_order() {
             "two-way-resolved",
             "~/src/project",
             "~/remote/project",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect::<Vec<_>>()
+    );
+}
+
+#[test]
+fn mutagen_create_args_with_ignores_insert_repeated_ignore_flags_before_endpoints() {
+    let args = build_create_args_with_ignores(
+        "dotsync-claude",
+        "/Users/me/.claude",
+        "devuser@mac-mini:~/.claude",
+        &[".DS_Store".to_string(), ".claude.json".to_string()],
+    );
+
+    assert_eq!(
+        args,
+        vec![
+            "sync",
+            "create",
+            "--name",
+            "dotsync-claude",
+            "--sync-mode",
+            "two-way-resolved",
+            "--ignore",
+            ".DS_Store",
+            "--ignore",
+            ".claude.json",
+            "/Users/me/.claude",
+            "devuser@mac-mini:~/.claude",
         ]
         .into_iter()
         .map(String::from)
@@ -265,6 +298,9 @@ fn sync_add_rejects_reusing_a_name_for_different_endpoints() {
             local: "~/src/project".into(),
             remote: "~/remote/project".into(),
             mode: SYNC_MODE_TWO_WAY_RESOLVED.into(),
+            ignore_paths: vec![],
+            kind: None,
+            label: None,
         }],
     );
     let runner = FakeRunner::success("");
@@ -301,6 +337,9 @@ fn sync_list_reads_persisted_sync_pairs_from_config() {
             local: "~/src/project".into(),
             remote: "~/remote/project".into(),
             mode: SYNC_MODE_TWO_WAY_RESOLVED.into(),
+            ignore_paths: vec![],
+            kind: None,
+            label: None,
         }],
     );
 

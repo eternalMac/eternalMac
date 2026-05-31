@@ -137,6 +137,9 @@ fn doctor_reports_degraded_sync_state_for_client() {
                 local: "/Users/me/notes".into(),
                 remote: "mac-mini.example.ts.net:~/notes".into(),
                 mode: "two-way-resolved".into(),
+                ignore_paths: vec![],
+                kind: None,
+                label: None,
                 status: "degraded".into(),
             }],
         })

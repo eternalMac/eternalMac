@@ -72,6 +72,9 @@ pub fn add_with<R: Runner>(
         local: pair.local,
         remote: pair.remote,
         mode: pair.mode,
+        ignore_paths: vec![],
+        kind: None,
+        label: None,
     };
     let existing_index = client
         .sync_pairs

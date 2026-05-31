@@ -91,6 +91,9 @@ pub fn prompt_sync_pair(
         name,
         local,
         remote,
+        ignore_paths: vec![],
+        kind: None,
+        label: None,
     })
 }
 

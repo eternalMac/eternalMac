@@ -135,6 +135,9 @@ mod tests {
                     name: "project".into(),
                     local: "/Users/me/project".into(),
                     remote: "devuser@mac-mini.example.ts.net:~/project".into(),
+                    ignore_paths: vec![],
+                    kind: None,
+                    label: None,
                 }])
             },
         )

@@ -40,6 +40,12 @@ pub struct SyncPairConfig {
     pub local: String,
     pub remote: String,
     pub mode: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ignore_paths: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -10,16 +10,30 @@ pub struct ListedSession {
 }
 
 pub fn build_create_args(name: &str, local: &str, remote: &str) -> Vec<String> {
-    vec![
+    build_create_args_with_ignores(name, local, remote, &[])
+}
+
+pub fn build_create_args_with_ignores(
+    name: &str,
+    local: &str,
+    remote: &str,
+    ignore_paths: &[String],
+) -> Vec<String> {
+    let mut args = vec![
         "sync".into(),
         "create".into(),
         "--name".into(),
         name.into(),
         "--sync-mode".into(),
         SYNC_MODE_TWO_WAY_RESOLVED.into(),
-        local.into(),
-        remote.into(),
-    ]
+    ];
+    for ignore_path in ignore_paths {
+        args.push("--ignore".into());
+        args.push(ignore_path.clone());
+    }
+    args.push(local.into());
+    args.push(remote.into());
+    args
 }
 
 pub fn list_args() -> Vec<String> {
