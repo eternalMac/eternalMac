@@ -93,18 +93,43 @@ pub fn render_summary(snapshot: &StatusSnapshot) -> String {
                 ));
             }
 
-            let sync_summary = if snapshot.state.syncs.is_empty() {
+            let ordinary_syncs = snapshot
+                .state
+                .syncs
+                .iter()
+                .filter(|sync| sync.kind.as_deref() != Some("dotsync"))
+                .collect::<Vec<_>>();
+            let dotsyncs = snapshot
+                .state
+                .syncs
+                .iter()
+                .filter(|sync| sync.kind.as_deref() == Some("dotsync"))
+                .collect::<Vec<_>>();
+
+            let sync_summary = if ordinary_syncs.is_empty() {
                 "none".to_string()
             } else {
-                snapshot
-                    .state
-                    .syncs
+                ordinary_syncs
                     .iter()
                     .map(|sync| format!("{}:{}", sync.name, sync.status))
                     .collect::<Vec<_>>()
                     .join(", ")
             };
             lines.push(format!("syncs: {sync_summary}"));
+
+            let dotsync_summary = if dotsyncs.is_empty() {
+                "none".to_string()
+            } else {
+                dotsyncs
+                    .iter()
+                    .map(|sync| {
+                        let label = sync.label.as_deref().unwrap_or(sync.name.as_str());
+                        format!("{label}:{}", sync.status)
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            lines.push(format!("dotsync: {dotsync_summary}"));
         }
     }
 

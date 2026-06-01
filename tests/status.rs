@@ -1,8 +1,9 @@
 use assert_cmd::Command;
 use eternalmac::app::paths::Paths;
 use eternalmac::config::store::Store;
-use eternalmac::model::config::{Config, Role, ServerConfig, SessionConfig};
-use eternalmac::model::state::State;
+use eternalmac::model::config::{ClientConfig, Config, Role, ServerConfig, SessionConfig};
+use eternalmac::model::state::{State, SyncPairState};
+use eternalmac::status::service::{render_summary, StatusSnapshot};
 use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -171,4 +172,61 @@ fn status_marks_stale_daemon_heartbeat_as_unhealthy() {
                 .and(contains("daemon healthy: no"))
                 .and(contains("daemon heartbeat stale: yes")),
         );
+}
+
+#[test]
+fn client_status_renders_dotsync_targets_separately() {
+    let snapshot = StatusSnapshot {
+        config: Config {
+            role: Role::Client,
+            server: None,
+            client: Some(ClientConfig {
+                paired_server: "mac-mini".into(),
+                server_ssh_user: Some("devuser".into()),
+                server_etterminal_path: None,
+                pinned: vec![],
+                sync_pairs: vec![],
+            }),
+            session: SessionConfig { auto_attach: true },
+        },
+        state: State {
+            role: Role::Client,
+            tailscale_ok: true,
+            server_reachable: true,
+            healthy: true,
+            summary: "client setup complete; runtime health pending".into(),
+            tailscale_dns: None,
+            daemon_healthy: false,
+            daemon_heartbeat_unix: 0,
+            default_session_present: false,
+            known_sessions: vec![],
+            syncs: vec![
+                SyncPairState {
+                    name: "project".into(),
+                    local: "/Users/me/project".into(),
+                    remote: "devuser@mac-mini:~/project".into(),
+                    mode: "two-way-resolved".into(),
+                    status: "created".into(),
+                    ignore_paths: vec![],
+                    kind: None,
+                    label: None,
+                },
+                SyncPairState {
+                    name: "dotsync-claude".into(),
+                    local: "/Users/me/.claude".into(),
+                    remote: "devuser@mac-mini:~/.claude".into(),
+                    mode: "two-way-resolved".into(),
+                    status: "created".into(),
+                    ignore_paths: vec!["auth.json".into()],
+                    kind: Some("dotsync".into()),
+                    label: Some("Claude Code".into()),
+                },
+            ],
+        },
+    };
+
+    let rendered = render_summary(&snapshot);
+
+    assert!(rendered.contains("syncs: project:created"));
+    assert!(rendered.contains("dotsync: Claude Code:created"));
 }
