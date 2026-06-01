@@ -71,6 +71,12 @@ Create a fresh remote session and attach immediately:
 eternalMac attach -n feature-branch
 ```
 
+### DotSync
+
+During `eternalMac setup client`, you can optionally enable DotSync. DotSync detects supported AI-agent dotfiles such as Claude Code, Codex, OpenCode, Goose, Gemini CLI, Qwen Code, Pi, and Amp, then creates normal EternalMac sync roots for the targets you approve.
+
+DotSync is off by default. It uses a curated allowlist instead of syncing every hidden file in your home directory, and it excludes common auth, cache, log, telemetry, and machine-identity files.
+
 Full setup and troubleshooting docs:
 
 https://eternalmac.dev/docs
