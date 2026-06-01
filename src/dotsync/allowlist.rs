@@ -211,10 +211,10 @@ pub fn expand_home_path(path: &str, home: &Path) -> PathBuf {
 fn include_paths_for_detection(include_path: &str, home: &Path) -> Result<Vec<(String, PathBuf)>> {
     if !include_path.contains('*') {
         let local_path = expand_home_path(include_path, home);
-        return Ok(local_path
-            .exists()
-            .then(|| vec![(include_path.to_string(), local_path)])
-            .unwrap_or_default());
+        if local_path.exists() {
+            return Ok(vec![(include_path.to_string(), local_path)]);
+        }
+        return Ok(vec![]);
     }
 
     let Some(prefix) = include_path.strip_suffix('*') else {
