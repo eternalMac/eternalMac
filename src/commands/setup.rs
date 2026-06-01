@@ -5,7 +5,9 @@ use crate::app::context::AppContext;
 use crate::setup::client::{
     apply_client_setup_with_preflight, preflight_client_setup, ClientSetupInput, SyncRootInput,
 };
-use crate::setup::prompts::{prompt_server_dns, prompt_server_ssh_user, prompt_sync_roots};
+use crate::setup::prompts::{
+    prompt_dotsync_roots, prompt_server_dns, prompt_server_ssh_user, prompt_sync_roots,
+};
 use crate::setup::server::apply_server_setup;
 
 const DEFAULT_SERVER_HOST_LABEL: &str = "mac-mini";
@@ -53,6 +55,7 @@ pub fn run_client(server_override: Option<String>) -> Result<()> {
         prompt_server_dns,
         prompt_server_ssh_user,
         prompt_sync_roots,
+        prompt_dotsync_roots,
     )?;
     let summary = apply_client_setup_with_preflight(
         &context.paths,
@@ -69,23 +72,26 @@ pub fn run_client(server_override: Option<String>) -> Result<()> {
     Ok(())
 }
 
-fn collect_client_setup_request<PF, PD, PR, T>(
+fn collect_client_setup_request<PF, PD, PR, DD, T>(
     server_override: Option<String>,
     ssh_user_prefill: Option<String>,
     preflight: PF,
     prompt_dns: PD,
     prompt_user: impl FnOnce(Option<String>) -> Result<String>,
     prompt_roots: PR,
+    prompt_dotsync: DD,
 ) -> Result<(T, ClientSetupInput)>
 where
     PF: FnOnce() -> Result<T>,
     PD: FnOnce(Option<String>) -> Result<String>,
     PR: FnOnce(&str, &str) -> Result<Vec<SyncRootInput>>,
+    DD: FnOnce(&str, &str) -> Result<Vec<SyncRootInput>>,
 {
     let preflight = preflight()?;
     let paired_server = prompt_dns(server_override)?;
     let server_ssh_user = prompt_user(ssh_user_prefill)?;
-    let sync_roots = prompt_roots(&server_ssh_user, &paired_server)?;
+    let mut sync_roots = prompt_roots(&server_ssh_user, &paired_server)?;
+    sync_roots.extend(prompt_dotsync(&server_ssh_user, &paired_server)?);
 
     Ok((
         preflight,
@@ -140,6 +146,7 @@ mod tests {
                     label: None,
                 }])
             },
+            |_server_user, _server_dns| Ok(vec![]),
         )
         .unwrap();
 
@@ -152,6 +159,71 @@ mod tests {
         assert_eq!(input.server_ssh_user, "devuser");
         assert_eq!(input.sync_roots.len(), 1);
         assert_eq!(input.sync_roots[0].name, "project");
+    }
+
+    #[test]
+    fn client_setup_request_appends_dotsync_roots_after_regular_syncs() {
+        let calls = RefCell::new(Vec::new());
+
+        let (_preflight, input) = collect_client_setup_request(
+            Some("override.ts.net".into()),
+            Some("devuser".into()),
+            || {
+                calls.borrow_mut().push("preflight");
+                Ok("ready")
+            },
+            |server_override| {
+                calls.borrow_mut().push("prompt-dns");
+                assert_eq!(server_override.as_deref(), Some("override.ts.net"));
+                Ok("mac-mini.example.ts.net".into())
+            },
+            |user_override| {
+                calls.borrow_mut().push("prompt-user");
+                assert_eq!(user_override.as_deref(), Some("devuser"));
+                Ok("devuser".into())
+            },
+            |server_user, server_dns| {
+                calls.borrow_mut().push("prompt-syncs");
+                assert_eq!(server_user, "devuser");
+                assert_eq!(server_dns, "mac-mini.example.ts.net");
+                Ok(vec![SyncRootInput {
+                    name: "project".into(),
+                    local: "/Users/me/project".into(),
+                    remote: "devuser@mac-mini.example.ts.net:~/project".into(),
+                    ignore_paths: vec![],
+                    kind: None,
+                    label: None,
+                }])
+            },
+            |server_user, server_dns| {
+                calls.borrow_mut().push("prompt-dotsync");
+                assert_eq!(server_user, "devuser");
+                assert_eq!(server_dns, "mac-mini.example.ts.net");
+                Ok(vec![SyncRootInput {
+                    name: "dotsync-claude".into(),
+                    local: "/Users/me/.claude".into(),
+                    remote: "devuser@mac-mini.example.ts.net:~/.claude".into(),
+                    ignore_paths: vec!["auth.json".into()],
+                    kind: Some("dotsync".into()),
+                    label: Some("Claude Code".into()),
+                }])
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            calls.into_inner(),
+            vec![
+                "preflight",
+                "prompt-dns",
+                "prompt-user",
+                "prompt-syncs",
+                "prompt-dotsync"
+            ]
+        );
+        assert_eq!(input.sync_roots.len(), 2);
+        assert_eq!(input.sync_roots[0].name, "project");
+        assert_eq!(input.sync_roots[1].name, "dotsync-claude");
     }
 
     #[test]
@@ -175,6 +247,10 @@ mod tests {
             },
             |_server_user, _server_dns| {
                 calls.borrow_mut().push("prompt-syncs");
+                Ok(vec![])
+            },
+            |_server_user, _server_dns| {
+                calls.borrow_mut().push("prompt-dotsync");
                 Ok(vec![])
             },
         )

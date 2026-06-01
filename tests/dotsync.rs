@@ -148,7 +148,7 @@ fn build_root_preserves_dotsync_metadata_and_exclusions() {
         "devuser@mac-mini.example.ts.net:~/.claude".to_string()
     );
     assert_eq!(root.kind.as_deref(), Some("dotsync"));
-    assert_eq!(root.label.as_deref(), Some("Claude"));
+    assert_eq!(root.label.as_deref(), Some("Claude Code"));
     assert!(root.ignore_paths.contains(&".DS_Store".to_string()));
     assert!(root.ignore_paths.contains(&".claude.json".to_string()));
 }

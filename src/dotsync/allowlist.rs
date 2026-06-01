@@ -59,7 +59,7 @@ pub fn targets() -> Vec<DotSyncTarget> {
     vec![
         target(
             "claude",
-            "Claude",
+            "Claude Code",
             &["~/.claude"],
             true,
             DotSyncRisk::SafeDefault,
@@ -95,7 +95,7 @@ pub fn targets() -> Vec<DotSyncTarget> {
         ),
         target(
             "gemini",
-            "Gemini",
+            "Gemini CLI",
             &["~/.gemini"],
             true,
             DotSyncRisk::SafeDefault,
@@ -104,7 +104,7 @@ pub fn targets() -> Vec<DotSyncTarget> {
         ),
         target(
             "qwen",
-            "Qwen",
+            "Qwen Code",
             &["~/.qwen"],
             true,
             DotSyncRisk::SafeDefault,
@@ -113,7 +113,7 @@ pub fn targets() -> Vec<DotSyncTarget> {
         ),
         target(
             "pi",
-            "Pi",
+            "Pi Coding Agent",
             &["~/.pi"],
             true,
             DotSyncRisk::SafeDefault,
@@ -158,7 +158,7 @@ pub fn targets() -> Vec<DotSyncTarget> {
         ),
         target(
             "roo",
-            "Roo",
+            "Roo Code",
             &["~/.roo/rules", "~/.roo/rules-*"],
             false,
             DotSyncRisk::Caution,

@@ -1,6 +1,9 @@
 use anyhow::Result;
 use dialoguer::{Confirm, Input};
 
+use crate::dotsync::allowlist::{
+    build_dotsync_root, detect_existing_targets, DetectedDotSyncTarget, DotSyncRisk,
+};
 use crate::setup::client::SyncRootInput;
 use crate::tooling::ssh::{build_sync_destination, validate_ssh_host, validate_ssh_user};
 
@@ -112,6 +115,56 @@ pub fn prompt_sync_roots(server_ssh_user: &str, server_dns: &str) -> Result<Vec<
     }
 
     Ok(sync_roots)
+}
+
+pub fn prompt_enable_dotsync() -> Result<bool> {
+    Ok(Confirm::new()
+        .with_prompt("Enable DotSync for AI-agent dotfiles?")
+        .default(false)
+        .interact()?)
+}
+
+fn prompt_dotsync_target(target: &DetectedDotSyncTarget) -> Result<bool> {
+    let mut prompt = format!("DotSync {} ({})?", target.target.label, target.include_path);
+    if target.target.risk == DotSyncRisk::Caution {
+        if let Some(risk_note) = target.target.risk_note {
+            prompt.push_str(&format!(" - {risk_note}"));
+        }
+    }
+
+    Ok(Confirm::new()
+        .with_prompt(prompt)
+        .default(target.target.default_selected)
+        .interact()?)
+}
+
+pub fn prompt_dotsync_roots(server_ssh_user: &str, server_dns: &str) -> Result<Vec<SyncRootInput>> {
+    if !prompt_enable_dotsync()? {
+        return Ok(vec![]);
+    }
+
+    let home = std::env::var("HOME")?;
+    let home = std::path::Path::new(&home);
+    let detected = detect_existing_targets(home)?;
+    if detected.is_empty() {
+        println!("No supported AI-agent dotfiles found for DotSync.");
+        return Ok(vec![]);
+    }
+
+    let mut roots = Vec::new();
+    for detected_target in detected {
+        if prompt_dotsync_target(&detected_target)? {
+            roots.push(build_dotsync_root(
+                &detected_target.target,
+                &detected_target.include_path,
+                home,
+                server_ssh_user,
+                server_dns,
+            ));
+        }
+    }
+
+    Ok(roots)
 }
 
 #[cfg(test)]
