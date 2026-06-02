@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use crate::process::runner::Runner;
+
 pub const ET_FORMULA: &str = "et";
 pub const TMUX_FORMULA: &str = "tmux";
 pub const MUTAGEN_TAP: &str = "mutagen-io/mutagen";
@@ -23,6 +25,19 @@ impl Inspector {
     pub fn has(&self, name: &str) -> bool {
         self.installed.get(name).copied().unwrap_or(false)
     }
+}
+
+pub fn inspect_installed<R: Runner>(runner: &R) -> Inspector {
+    Inspector::from_installed([
+        (ET_FORMULA, brew_formula_installed(runner, ET_FORMULA)),
+        (TMUX_FORMULA, command_available(runner, "tmux")),
+        (
+            MUTAGEN_FORMULA,
+            brew_formula_installed(runner, MUTAGEN_FORMULA),
+        ),
+        ("mutagen", command_available(runner, "mutagen")),
+        (TAILSCALE_CASK, tailscale_available(runner)),
+    ])
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,4 +92,42 @@ pub fn build_dependency_plan(inspector: &Inspector) -> DependencyPlan {
         .collect();
 
     DependencyPlan { formulae, casks }
+}
+
+fn brew_formula_installed<R: Runner>(runner: &R, formula: &str) -> bool {
+    runner
+        .run(
+            "brew",
+            &[
+                "list".to_string(),
+                "--formula".to_string(),
+                formula.to_string(),
+            ],
+        )
+        .is_ok_and(|output| output.success)
+}
+
+fn command_available<R: Runner>(runner: &R, command: &str) -> bool {
+    runner
+        .run(
+            "sh",
+            &[
+                "-c".to_string(),
+                format!("command -v {command} >/dev/null 2>&1"),
+            ],
+        )
+        .is_ok_and(|output| output.success)
+}
+
+fn tailscale_available<R: Runner>(runner: &R) -> bool {
+    command_available(runner, "tailscale")
+        || runner
+            .run(
+                "sh",
+                &[
+                    "-c".to_string(),
+                    "test -x /Applications/Tailscale.app/Contents/MacOS/Tailscale".to_string(),
+                ],
+            )
+            .is_ok_and(|output| output.success)
 }

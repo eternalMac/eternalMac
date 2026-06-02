@@ -11,7 +11,7 @@ use crate::model::state::State;
 use crate::platform::launchd::{write_plist, Definition};
 use crate::process::runner::{command_failed, Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args, tap_args};
-use crate::tooling::dependencies::{required_formulae, MUTAGEN_TAP, TAILSCALE_CASK};
+use crate::tooling::dependencies::{build_dependency_plan, inspect_installed, MUTAGEN_TAP};
 use crate::tooling::ssh::{et_server_probe_args, port_probe_args};
 use crate::tooling::tailscale::{parse_status_json, status_args, Status as TailscaleStatus};
 use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
@@ -218,13 +218,15 @@ pub fn apply_server_setup<R: Runner>(
     let tap_args = tap_args(MUTAGEN_TAP);
     run_checked(runner, "brew", &tap_args)?;
 
-    let formulae = required_formulae();
-    if let Some(args) = install_formula_args(&formulae) {
+    let dependency_plan = build_dependency_plan(&inspect_installed(runner));
+    if let Some(args) = install_formula_args(&dependency_plan.formulae) {
         run_checked(runner, "brew", &args)?;
     }
 
-    let cask_args = install_cask_args(TAILSCALE_CASK);
-    run_checked(runner, "brew", &cask_args)?;
+    for cask in &dependency_plan.casks {
+        let cask_args = install_cask_args(cask);
+        run_checked(runner, "brew", &cask_args)?;
+    }
 
     let tailscale_args = status_args();
     let tailscale_status = run_checked(runner, "tailscale", &tailscale_args)?;

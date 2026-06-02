@@ -13,7 +13,7 @@ use crate::model::state::{State, SyncPairState};
 use crate::platform::launchd::{write_plist, Definition};
 use crate::process::runner::{Output, Runner};
 use crate::tooling::brew::{install_cask_args, install_formula_args, tap_args};
-use crate::tooling::dependencies::{required_formulae, MUTAGEN_TAP, TAILSCALE_CASK};
+use crate::tooling::dependencies::{build_dependency_plan, inspect_installed, MUTAGEN_TAP};
 use crate::tooling::mutagen::{
     build_create_args_with_ignores, list_args as mutagen_list_args, parse_list_output,
     ListedSession, SYNC_MODE_TWO_WAY_RESOLVED,
@@ -451,13 +451,15 @@ pub(crate) fn preflight_client_setup<R: Runner>(runner: &R) -> Result<ClientPref
     let tap_args = tap_args(MUTAGEN_TAP);
     run_checked(runner, "brew", &tap_args)?;
 
-    let formulae = required_formulae();
-    if let Some(args) = install_formula_args(&formulae) {
+    let dependency_plan = build_dependency_plan(&inspect_installed(runner));
+    if let Some(args) = install_formula_args(&dependency_plan.formulae) {
         run_checked(runner, "brew", &args)?;
     }
 
-    let cask_args = install_cask_args(TAILSCALE_CASK);
-    run_checked(runner, "brew", &cask_args)?;
+    for cask in &dependency_plan.casks {
+        let cask_args = install_cask_args(cask);
+        run_checked(runner, "brew", &cask_args)?;
+    }
 
     let tailscale_args = status_args();
     let tailscale_status = run_checked(runner, "tailscale", &tailscale_args)?;

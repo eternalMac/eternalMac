@@ -49,6 +49,22 @@ fn call_index(calls: &[(String, Vec<String>)], program: &str, args: &[String]) -
     })
 }
 
+fn is_dependency_probe(program: &str, args: &[String]) -> bool {
+    if program == "brew"
+        && args.first().map(String::as_str) == Some("list")
+        && args.get(1).map(String::as_str) == Some("--formula")
+    {
+        return true;
+    }
+
+    program == "sh"
+        && args.first().map(String::as_str) == Some("-c")
+        && args.get(1).is_some_and(|script| {
+            script.starts_with("command -v ")
+                || script == "test -x /Applications/Tailscale.app/Contents/MacOS/Tailscale"
+        })
+}
+
 impl Runner for FakeRunner {
     fn run(&self, program: &str, args: &[String]) -> Result<Output> {
         self.calls
@@ -61,6 +77,14 @@ impl Runner for FakeRunner {
             .find(|stub| stub.program == program && stub.args == args)
         {
             return Ok(stub.output.clone());
+        }
+
+        if is_dependency_probe(program, args) {
+            return Ok(Output {
+                stdout: String::new(),
+                stderr: String::new(),
+                success: false,
+            });
         }
 
         let stdout = match (program, args.first().map(String::as_str)) {
@@ -248,6 +272,73 @@ fn server_setup_writes_config_state_launch_agent_and_bootstrap_session() {
     assert!(et_port_index < tmux_index);
     assert!(unload_index < launchctl_index);
     assert!(tmux_index < launchctl_index);
+}
+
+#[test]
+fn server_setup_installs_only_missing_dependencies() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::with_stubs(vec![
+        Stub {
+            program: "brew".to_string(),
+            args: vec![
+                "list".to_string(),
+                "--formula".to_string(),
+                "et".to_string(),
+            ],
+            output: Output {
+                stdout: String::new(),
+                stderr: String::new(),
+                success: true,
+            },
+        },
+        Stub {
+            program: "sh".to_string(),
+            args: vec![
+                "-c".to_string(),
+                "command -v mutagen >/dev/null 2>&1".to_string(),
+            ],
+            output: Output {
+                stdout: String::new(),
+                stderr: String::new(),
+                success: true,
+            },
+        },
+        Stub {
+            program: "sh".to_string(),
+            args: vec![
+                "-c".to_string(),
+                "test -x /Applications/Tailscale.app/Contents/MacOS/Tailscale".to_string(),
+            ],
+            output: Output {
+                stdout: String::new(),
+                stderr: String::new(),
+                success: true,
+            },
+        },
+    ]);
+
+    apply_server_setup(&paths, &store, &runner, "mac-mini".into()).unwrap();
+
+    let calls = runner.calls.borrow();
+    assert!(!calls.iter().any(|(program, args)| {
+        program == "brew"
+            && args.first().map(String::as_str) == Some("install")
+            && args.iter().any(|arg| arg == "mutagen-io/mutagen/mutagen")
+    }));
+    assert!(!calls.iter().any(|(program, args)| {
+        program == "brew"
+            && args
+                == &vec![
+                    "install".to_string(),
+                    "--cask".to_string(),
+                    "tailscale-app".to_string(),
+                ]
+    }));
+    assert!(calls.iter().any(|(program, args)| {
+        program == "brew" && args == &vec!["install".to_string(), "tmux".to_string()]
+    }));
 }
 
 #[test]
