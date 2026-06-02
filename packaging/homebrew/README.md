@@ -21,8 +21,8 @@ For a GitHub Release, build the package and stamp the final download URL into th
 
 ```bash
 scripts/release/package-homebrew.sh \
-  --version 0.2.0 \
-  --url https://github.com/eternalMac/eternalMac/releases/download/v0.2.0/eternalmac-0.2.0-aarch64-apple-darwin.tar.gz \
+  --version 0.2.1 \
+  --url https://github.com/eternalMac/eternalMac/releases/download/v0.2.1/eternalmac-0.2.1-aarch64-apple-darwin.tar.gz \
   --formula-output Formula/eternalmac.rb
 ```
 
