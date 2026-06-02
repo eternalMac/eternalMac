@@ -15,11 +15,10 @@ eternalMac session new <name>
 eternalMac session pin <name>
 eternalMac session unpin <name>
 
-eternalMac sync add <name> --local <path> --remote <path>
+eternalMac sync add <name> --local <path> --remote <path> [--ignore <pattern> ...]
 eternalMac sync list
 eternalMac sync status
 
 eternalMac status
 eternalMac doctor
 ```
-

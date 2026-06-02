@@ -67,6 +67,8 @@ enum SyncAction {
         local: String,
         #[arg(long)]
         remote: String,
+        #[arg(long = "ignore", value_name = "PATTERN")]
+        ignore_paths: Vec<String>,
     },
     #[command(about = "List sync pairs")]
     List,
@@ -115,8 +117,9 @@ pub fn run() -> Result<()> {
                     name,
                     local,
                     remote,
+                    ignore_paths,
                 },
-        }) => sync::add(&name, &local, &remote),
+        }) => sync::add(&name, &local, &remote, &ignore_paths),
         Some(Command::Sync {
             action: SyncAction::List,
         }) => sync::list(),

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use eternalmac::app::paths::Paths;
-use eternalmac::commands::sync::{add_with, list_with, status_with};
+use eternalmac::commands::sync::{add_with, add_with_ignores, list_with, status_with};
 use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig, SyncPairConfig};
 use eternalmac::process::runner::{Output, Runner};
@@ -197,6 +197,43 @@ fn sync_add_runs_mutagen_create_and_persists_pair() {
     assert_eq!(saved.local, sync_pair.local);
     assert_eq!(saved.remote, sync_pair.remote);
     assert_eq!(saved.mode, sync_pair.mode);
+}
+
+#[test]
+fn sync_add_accepts_explicit_ignore_patterns_and_persists_them() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_client_config_with_server_user(&store, Some("devuser"), vec![]);
+    let runner = FakeRunner::success("");
+
+    let sync_pair = add_with_ignores(
+        &store,
+        &runner,
+        "project",
+        "~/src/project",
+        "~/remote/project",
+        &[".env".to_string(), "secrets/".to_string()],
+    )
+    .unwrap();
+
+    assert_eq!(sync_pair.ignore_paths, vec![".env", "secrets/"]);
+    let calls = runner.calls.borrow();
+    assert_eq!(
+        calls.as_slice(),
+        &[(
+            "mutagen".into(),
+            build_create_args_with_ignores(
+                "project",
+                "~/src/project",
+                "devuser@mac-mini:~/remote/project",
+                &[".env".to_string(), "secrets/".to_string()]
+            )
+        )]
+    );
+    let config = store.load_config().unwrap();
+    let saved_pairs = config.client.unwrap().sync_pairs;
+    assert_eq!(saved_pairs[0].ignore_paths, vec![".env", "secrets/"]);
 }
 
 #[test]

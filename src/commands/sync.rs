@@ -5,7 +5,7 @@ use crate::config::store::Store;
 use crate::model::config::{ClientConfig, SyncPairConfig};
 use crate::process::runner::{command_failed, Output, Runner};
 use crate::sync::service::build_pair;
-use crate::tooling::mutagen::{build_create_args, list_args};
+use crate::tooling::mutagen::{build_create_args_with_ignores, list_args};
 use crate::tooling::ssh::build_sync_destination;
 
 fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
@@ -58,6 +58,17 @@ pub fn add_with<R: Runner>(
     local: &str,
     remote: &str,
 ) -> Result<SyncPairConfig> {
+    add_with_ignores(store, runner, name, local, remote, &[])
+}
+
+pub fn add_with_ignores<R: Runner>(
+    store: &Store,
+    runner: &R,
+    name: &str,
+    local: &str,
+    remote: &str,
+    ignore_paths: &[String],
+) -> Result<SyncPairConfig> {
     let mut config = store
         .load_config()
         .context("loading client config for sync add")?;
@@ -72,7 +83,7 @@ pub fn add_with<R: Runner>(
         local: pair.local,
         remote: pair.remote,
         mode: pair.mode,
-        ignore_paths: vec![],
+        ignore_paths: ignore_paths.to_vec(),
         kind: None,
         label: None,
     };
@@ -92,7 +103,12 @@ pub fn add_with<R: Runner>(
     run_checked(
         runner,
         "mutagen",
-        &build_create_args(&sync_pair.name, &sync_pair.local, &sync_pair.remote),
+        &build_create_args_with_ignores(
+            &sync_pair.name,
+            &sync_pair.local,
+            &sync_pair.remote,
+            &sync_pair.ignore_paths,
+        ),
     )?;
 
     if let Some(index) = existing_index {
@@ -123,9 +139,16 @@ pub fn status_with<R: Runner>(runner: &R) -> Result<String> {
     Ok(output.stdout)
 }
 
-pub fn add(name: &str, local: &str, remote: &str) -> Result<()> {
+pub fn add(name: &str, local: &str, remote: &str, ignore_paths: &[String]) -> Result<()> {
     let context = AppContext::from_env()?;
-    add_with(&context.store, &context.runner, name, local, remote)?;
+    add_with_ignores(
+        &context.store,
+        &context.runner,
+        name,
+        local,
+        remote,
+        ignore_paths,
+    )?;
     Ok(())
 }
 
