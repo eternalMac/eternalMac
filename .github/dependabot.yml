@@ -5,8 +5,8 @@
 
 version: 2
 updates:
-  - package-ecosystem: "npm" # See documentation for possible values
-    directory: "/website/" # Location of package manifests
+  - package-ecosystem: "npm"
+    directory: "/website/" # marketing website path
     schedule:
       interval: "weekly"
     labels:
@@ -16,8 +16,8 @@ updates:
       npm-production:
         patterns:
           - "*"
-  - package-ecosystem: "rust" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "cargo" 
+    directory: "/" # app rust root path
     schedule:
       interval: "weekly"
     labels:
