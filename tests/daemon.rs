@@ -750,3 +750,91 @@ fn client_run_once_marks_transient_sync_status_as_degraded() {
     assert_eq!(state.syncs[0].status, "degraded");
     assert_eq!(state.summary, "client daemon degraded");
 }
+
+// Real mutagen statuses observed during a normal transfer (mutagen 0.18.1):
+// "Scanning files" and "Staging files on beta". These are in-progress phases of
+// a healthy sync and must NOT be reported as degraded, or health flaps on every
+// transfer. See https://github.com/eternalMac/eternalMac issue for details.
+fn client_config_with_single_project_pair() -> Config {
+    Config {
+        role: Role::Client,
+        server: None,
+        client: Some(ClientConfig {
+            paired_server: "mac-mini.example.ts.net".into(),
+            server_ssh_user: None,
+            server_etterminal_path: None,
+            pinned: vec![],
+            sync_pairs: vec![SyncPairConfig {
+                name: "project".into(),
+                local: "/Users/me/project".into(),
+                remote: "mac-mini.example.ts.net:~/project".into(),
+                mode: "two-way-resolved".into(),
+                ignore_paths: vec![],
+                kind: None,
+                label: None,
+            }],
+        }),
+        session: SessionConfig { auto_attach: true },
+    }
+}
+
+fn run_client_once_with_sync_status(status_line: &str) -> State {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths.clone());
+    let runner = FakeRunner::default()
+        .with_response(
+            "tailscale",
+            status_args(),
+            Output {
+                stdout:
+                    r#"{"BackendState":"Running","Self":{"DNSName":"mac-mini.example.ts.net"}}"#
+                        .into(),
+                stderr: String::new(),
+                success: true,
+            },
+        )
+        .with_response(
+            "mutagen",
+            list_args(),
+            Output {
+                stdout: format!(
+                    "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: {status_line}\n"
+                ),
+                stderr: String::new(),
+                success: true,
+            },
+        );
+
+    store
+        .save_config(&client_config_with_single_project_pair())
+        .unwrap();
+
+    eternalmac::daemon::client::run_once(&paths, &store, &runner).unwrap();
+    store.load_state().unwrap()
+}
+
+#[test]
+fn client_run_once_treats_scanning_transfer_as_active() {
+    let state = run_client_once_with_sync_status("Scanning files");
+
+    assert_eq!(state.syncs[0].status, "active");
+    assert!(state.healthy);
+    assert_eq!(state.summary, "client daemon healthy");
+}
+
+#[test]
+fn client_run_once_treats_staging_transfer_as_active() {
+    let state = run_client_once_with_sync_status("Staging files on beta");
+
+    assert_eq!(state.syncs[0].status, "active");
+    assert!(state.healthy);
+}
+
+#[test]
+fn client_run_once_still_marks_reconnecting_as_degraded() {
+    let state = run_client_once_with_sync_status("reconnecting");
+
+    assert_eq!(state.syncs[0].status, "degraded");
+    assert!(!state.healthy);
+}
