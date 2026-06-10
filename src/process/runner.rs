@@ -110,6 +110,10 @@ fn candidate_program_paths(program: &str) -> Vec<String> {
         candidates.push("/Applications/Tailscale.app/Contents/MacOS/Tailscale".to_string());
     }
 
+    if program == "ping" {
+        candidates.push("/sbin/ping".to_string());
+    }
+
     dedupe(candidates)
 }
 

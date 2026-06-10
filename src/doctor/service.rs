@@ -4,12 +4,14 @@ use anyhow::Result;
 
 use crate::config::store::Store;
 use crate::model::config::{Config, Role};
+use crate::process::runner::Runner;
 use crate::status::service::daemon_heartbeat_stale;
+use crate::tooling::ping::alive_check_args;
 
 const CONFIG_MISSING_ISSUE: &str =
     "config missing: run `eternalMac setup server` or `eternalMac setup client`";
 
-pub fn collect_issues(store: &Store) -> Result<Vec<String>> {
+pub fn collect_issues<R: Runner>(store: &Store, runner: &R) -> Result<Vec<String>> {
     let mut issues = Vec::new();
 
     let config = match store.load_config() {
@@ -25,13 +27,18 @@ pub fn collect_issues(store: &Store) -> Result<Vec<String>> {
     };
 
     if let Some(config) = config.as_ref() {
-        inspect_state(store, config, &mut issues)?;
+        inspect_state(store, config, runner, &mut issues)?;
     }
 
     Ok(issues)
 }
 
-fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Result<()> {
+fn inspect_state<R: Runner>(
+    store: &Store,
+    config: &Config,
+    runner: &R,
+    issues: &mut Vec<String>,
+) -> Result<()> {
     match store.load_state() {
         Ok(state) => {
             if role_name(&state.role) != role_name(&config.role) {
@@ -59,14 +66,18 @@ fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Re
                     issues.push("tailscale not running".to_string());
                 }
                 if !state.server_reachable {
-                    let paired_server = config
-                        .client
-                        .as_ref()
-                        .map(|client| client.paired_server.as_str())
-                        .unwrap_or("unknown");
-                    issues.push(format!(
-                        "paired server unreachable over Eternal Terminal: {paired_server}"
-                    ));
+                    match config.client.as_ref() {
+                        Some(client) => {
+                            let paired_server = client.paired_server.as_str();
+                            issues.push(format!(
+                                "paired server unreachable over Eternal Terminal: {paired_server}"
+                            ));
+                            issues.push(server_alive_issue(runner, paired_server));
+                        }
+                        None => issues.push(
+                            "paired server unreachable over Eternal Terminal: unknown".to_string(),
+                        ),
+                    }
                 }
                 for sync in state.syncs.iter().filter(|sync| sync.status != "active") {
                     issues.push(format!("sync {}: {}", sync.status, sync.name));
@@ -82,6 +93,18 @@ fn inspect_state(store: &Store, config: &Config, issues: &mut Vec<String>) -> Re
     }
 
     Ok(())
+}
+
+fn server_alive_issue<R: Runner>(runner: &R, paired_server: &str) -> String {
+    match runner.run("ping", &alive_check_args(paired_server)) {
+        Ok(output) if output.success => format!(
+            "server alive: yes ({paired_server} responds to ping; the Eternal Terminal service may be down on the server — try `brew services restart et` there)"
+        ),
+        Ok(_) => format!(
+            "server alive: no ({paired_server} did not respond to ping; the server may be offline or asleep)"
+        ),
+        Err(error) => format!("server alive: unknown (could not run ping: {error})"),
+    }
 }
 
 fn state_missing_issue(config: &Config) -> String {

@@ -5,7 +5,7 @@ use crate::doctor::service::collect_issues;
 
 pub fn run() -> Result<()> {
     let context = AppContext::from_env()?;
-    let issues = collect_issues(&context.store)?;
+    let issues = collect_issues(&context.store, &context.runner)?;
 
     if issues.is_empty() {
         println!("no issues");
