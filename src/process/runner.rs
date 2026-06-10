@@ -9,6 +9,7 @@ pub struct Output {
     pub stdout: String,
     pub stderr: String,
     pub success: bool,
+    pub exit_code: Option<i32>,
 }
 
 pub trait Runner {
@@ -49,6 +50,7 @@ impl Runner for SystemRunner {
                         stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
                         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
                         success: output.status.success(),
+                        exit_code: output.status.code(),
                     });
                 }
                 Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -77,6 +79,7 @@ impl Runner for SystemRunner {
                         stdout: String::new(),
                         stderr: String::new(),
                         success: status.success(),
+                        exit_code: status.code(),
                     });
                 }
                 Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -152,6 +155,19 @@ mod tests {
                 "/opt/homebrew/bin/tailscale".to_string(),
                 "/usr/local/bin/tailscale".to_string(),
                 "/Applications/Tailscale.app/Contents/MacOS/Tailscale".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn candidate_program_paths_include_sbin_ping() {
+        assert_eq!(
+            candidate_program_paths("ping"),
+            vec![
+                "ping".to_string(),
+                "/opt/homebrew/bin/ping".to_string(),
+                "/usr/local/bin/ping".to_string(),
+                "/sbin/ping".to_string(),
             ]
         );
     }

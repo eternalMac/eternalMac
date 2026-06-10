@@ -95,14 +95,30 @@ fn inspect_state<R: Runner>(
     Ok(())
 }
 
+// macOS ping(8) exit codes: 0 = at least one reply, 2 = no replies; anything
+// else (e.g. 68 for an unresolvable host) means the probe itself failed.
+const PING_NO_REPLIES_EXIT_CODE: i32 = 2;
+
 fn server_alive_issue<R: Runner>(runner: &R, paired_server: &str) -> String {
     match runner.run("ping", &alive_check_args(paired_server)) {
         Ok(output) if output.success => format!(
             "server alive: yes ({paired_server} responds to ping; the Eternal Terminal service may be down on the server — try `brew services restart et` there)"
         ),
-        Ok(_) => format!(
+        Ok(output) if output.exit_code == Some(PING_NO_REPLIES_EXIT_CODE) => format!(
             "server alive: no ({paired_server} did not respond to ping; the server may be offline or asleep)"
         ),
+        Ok(output) => {
+            let detail = match output.exit_code {
+                Some(code) => format!("ping exited with code {code}"),
+                None => "ping terminated without an exit code".to_string(),
+            };
+            let stderr = output.stderr.trim();
+            if stderr.is_empty() {
+                format!("server alive: unknown ({detail})")
+            } else {
+                format!("server alive: unknown ({detail}: {stderr})")
+            }
+        }
         Err(error) => format!("server alive: unknown (could not run ping: {error})"),
     }
 }

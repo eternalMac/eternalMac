@@ -65,6 +65,7 @@ impl Runner for FakeRunner {
             stdout: String::new(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         })
     }
 }
@@ -115,6 +116,7 @@ fn doctor_reports_server_alive_when_host_pings_but_et_is_unreachable() {
             stdout: String::new(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         },
     );
 
@@ -140,6 +142,7 @@ fn doctor_reports_server_not_alive_when_ping_gets_no_response() {
             stdout: String::new(),
             stderr: "Request timeout".into(),
             success: false,
+            exit_code: Some(2),
         },
     );
 
@@ -148,6 +151,31 @@ fn doctor_reports_server_not_alive_when_ping_gets_no_response() {
     assert!(issues
         .iter()
         .any(|issue| issue.starts_with("server alive: no")));
+}
+
+#[test]
+fn doctor_reports_server_alive_unknown_when_ping_fails_for_other_reasons() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let store = client_store_with_unreachable_server(&tempdir);
+    let runner = FakeRunner::default().with_response(
+        "ping",
+        alive_check_args("mac-mini.example.ts.net"),
+        Output {
+            stdout: String::new(),
+            stderr: "ping: cannot resolve mac-mini.example.ts.net: Unknown host".into(),
+            success: false,
+            exit_code: Some(68),
+        },
+    );
+
+    let issues = collect_issues(&store, &runner).unwrap();
+
+    let unknown_line = issues
+        .iter()
+        .find(|issue| issue.starts_with("server alive: unknown"))
+        .expect("expected a `server alive: unknown` line");
+    assert!(unknown_line.contains("68"));
+    assert!(unknown_line.contains("cannot resolve"));
 }
 
 #[test]

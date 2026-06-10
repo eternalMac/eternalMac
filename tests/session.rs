@@ -22,6 +22,7 @@ impl FakeRunner {
                 stdout: stdout.into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         }
     }
@@ -33,6 +34,7 @@ impl FakeRunner {
                 stdout: String::new(),
                 stderr: stderr.into(),
                 success: false,
+                exit_code: Some(1),
             },
         }
     }
@@ -44,6 +46,7 @@ impl FakeRunner {
                 stdout: stdout.into(),
                 stderr: stderr.into(),
                 success: false,
+                exit_code: Some(1),
             },
         }
     }

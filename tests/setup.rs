@@ -38,6 +38,7 @@ impl FakeRunner {
                 stdout: String::new(),
                 stderr: stderr.to_string(),
                 success: false,
+                exit_code: Some(1),
             },
         }])
     }
@@ -84,6 +85,7 @@ impl Runner for FakeRunner {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: false,
+                exit_code: Some(1),
             });
         }
 
@@ -102,6 +104,7 @@ impl Runner for FakeRunner {
             stdout,
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         })
     }
 }
@@ -291,6 +294,7 @@ fn server_setup_installs_only_missing_dependencies() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         },
         Stub {
@@ -303,6 +307,7 @@ fn server_setup_installs_only_missing_dependencies() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         },
         Stub {
@@ -315,6 +320,7 @@ fn server_setup_installs_only_missing_dependencies() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         },
     ]);
@@ -353,6 +359,7 @@ fn server_setup_errors_when_tailscale_dns_is_unavailable() {
             stdout: r#"{"BackendState":"Running","Self":{}}"#.to_string(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         },
     }]);
 
@@ -467,6 +474,7 @@ fn server_setup_skips_bootstrap_when_default_session_already_exists() {
             stdout: "default\npairing\n".to_string(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         },
     }]);
 
@@ -812,6 +820,7 @@ fn client_setup_skips_mutagen_create_when_matching_sync_already_exists() {
             stdout: "Name: project\nIdentifier: sync_123\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: Watching for changes\n".to_string(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         },
     }]);
 
@@ -909,6 +918,7 @@ fn server_setup_ignores_client_unload_not_loaded_error() {
             stdout: String::new(),
             stderr: "Could not find specified service".to_string(),
             success: false,
+            exit_code: Some(1),
         },
     }]);
 
@@ -993,6 +1003,7 @@ fn client_setup_ignores_server_unload_not_loaded_error() {
             stdout: String::new(),
             stderr: "Could not find specified service".to_string(),
             success: false,
+            exit_code: Some(1),
         },
     }]);
 
@@ -1211,6 +1222,7 @@ fn client_setup_mutagen_failure_after_partial_creation_persists_progress() {
             stdout: String::new(),
             stderr: "mutagen failed".to_string(),
             success: false,
+            exit_code: Some(1),
         },
     }]);
 
