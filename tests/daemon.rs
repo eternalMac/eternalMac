@@ -45,6 +45,7 @@ impl Runner for FakeRunner {
             stdout: String::new(),
             stderr: String::new(),
             success: true,
+            exit_code: Some(0),
         })
     }
 }
@@ -64,6 +65,7 @@ fn server_run_once_refreshes_state_and_marks_daemon_healthy() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -73,6 +75,7 @@ fn server_run_once_refreshes_state_and_marks_daemon_healthy() {
                 stdout: "default\npairing\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -124,6 +127,7 @@ fn client_run_once_refreshes_sync_state_from_config_and_mutagen_listing() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -133,6 +137,7 @@ fn client_run_once_refreshes_sync_state_from_config_and_mutagen_listing() {
                 stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: Watching for changes\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -215,6 +220,7 @@ fn client_run_once_marks_server_unreachable_when_et_probe_fails() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -224,6 +230,7 @@ fn client_run_once_marks_server_unreachable_when_et_probe_fails() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -233,6 +240,7 @@ fn client_run_once_marks_server_unreachable_when_et_probe_fails() {
                 stdout: "unable to connect".into(),
                 stderr: String::new(),
                 success: false,
+                exit_code: Some(1),
             },
         );
 
@@ -280,6 +288,7 @@ fn client_run_once_matches_sync_names_exactly() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -289,6 +298,7 @@ fn client_run_once_matches_sync_names_exactly() {
                 stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: Watching for changes\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -350,6 +360,7 @@ fn client_run_once_matches_syncs_by_name_and_endpoints_not_first_name_match() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -359,6 +370,7 @@ fn client_run_once_matches_syncs_by_name_and_endpoints_not_first_name_match() {
                 stdout: "Name: project\nIdentifier: sync_wrong\nLabels: None\nAlpha:\n    URL: /Users/me/other-project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/other-project\n    Connection state: Connected\nStatus: Watching for changes\n\nName: project\nIdentifier: sync_right\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: reconnecting\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -578,6 +590,7 @@ fn server_run_once_reconciles_missing_default_session() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -587,6 +600,7 @@ fn server_run_once_reconciles_missing_default_session() {
                 stdout: "pairing\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -596,6 +610,7 @@ fn server_run_once_reconciles_missing_default_session() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -640,6 +655,7 @@ fn server_run_once_treats_tmux_no_server_as_empty_and_reconciles() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -649,6 +665,7 @@ fn server_run_once_treats_tmux_no_server_as_empty_and_reconciles() {
                 stdout: String::new(),
                 stderr: "no server running on /tmp/tmux-501/default".into(),
                 success: false,
+                exit_code: Some(1),
             },
         )
         .with_response(
@@ -658,6 +675,7 @@ fn server_run_once_treats_tmux_no_server_as_empty_and_reconciles() {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 
@@ -706,6 +724,7 @@ fn client_run_once_marks_transient_sync_status_as_degraded() {
                         .into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         )
         .with_response(
@@ -715,6 +734,7 @@ fn client_run_once_marks_transient_sync_status_as_degraded() {
                 stdout: "Name: project\nIdentifier: sync_project\nLabels: None\nAlpha:\n    URL: /Users/me/project\n    Connection state: Connected\nBeta:\n    URL: mac-mini.example.ts.net:~/project\n    Connection state: Connected\nStatus: reconnecting\n".into(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             },
         );
 

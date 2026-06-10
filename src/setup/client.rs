@@ -687,6 +687,7 @@ mod tests {
                 stdout: String::new(),
                 stderr: String::new(),
                 success: true,
+                exit_code: Some(0),
             })
         }
     }
@@ -734,6 +735,7 @@ mod tests {
                     stdout: String::new(),
                     stderr: "Permission denied".into(),
                     success: false,
+                    exit_code: Some(1),
                 },
             },
             Stub {
@@ -743,6 +745,7 @@ mod tests {
                     stdout: String::new(),
                     stderr: String::new(),
                     success: true,
+                    exit_code: Some(0),
                 },
             },
         ]);
