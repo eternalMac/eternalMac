@@ -229,3 +229,20 @@ fn interactive_authorize_key_args_disable_pubkey_and_send_remote_command() {
         .unwrap()
         .contains("ssh-ed25519 AAAAB3Nza key-comment"));
 }
+
+#[test]
+fn interactive_authorize_key_args_neutralize_injection_in_public_key() {
+    // The public key is interpolated into a remote shell command that appends
+    // to authorized_keys. A key carrying shell metacharacters must stay inside
+    // a single-quoted literal so it cannot break out and execute.
+    let args = interactive_authorize_key_args(
+        "devuser",
+        "mac-mini.example.ts.net",
+        "ssh-ed25519 AAAA'; rm -rf ~ #",
+    );
+    let remote_command = args.last().unwrap();
+
+    assert!(remote_command.contains("'ssh-ed25519 AAAA'\\''; rm -rf ~ #'"));
+    // The unescaped break-out fragment must never appear.
+    assert!(!remote_command.contains("AAAA'; rm"));
+}

@@ -6,7 +6,8 @@ use eternalmac::config::store::Store;
 use eternalmac::model::config::{ClientConfig, Config, Role, SessionConfig};
 use eternalmac::process::runner::{Output, Runner};
 use eternalmac::tooling::et::{
-    build_attach_args, build_attach_args_with_options, build_new_session_args_with_options,
+    build_attach_args, build_attach_args_with_options, build_new_session_args,
+    build_new_session_args_with_options,
 };
 
 struct FakeRunner {
@@ -116,6 +117,39 @@ fn attach_args_escape_single_quotes_in_session_names() {
     assert_eq!(
         build_attach_args("mac-mini", "dev's session"),
         vec!["mac-mini", "-c", "tmux attach -t 'dev'\\''s session'"]
+    );
+}
+
+#[test]
+fn attach_args_neutralize_command_injection_in_session_names() {
+    // A session name carrying shell metacharacters must stay confined to a
+    // single-quoted literal so the remote shell cannot execute it.
+    let args = build_attach_args("mac-mini", "default'; rm -rf ~ #");
+
+    assert_eq!(
+        args,
+        vec![
+            "mac-mini",
+            "-c",
+            "tmux attach -t 'default'\\''; rm -rf ~ #'",
+        ]
+    );
+    // The dangerous fragment must never appear outside the quoted literal.
+    assert!(!args[2].contains("default'; rm"));
+}
+
+#[test]
+fn new_session_args_neutralize_substitution_in_session_names() {
+    // Command/back-tick substitution is inert inside single quotes.
+    let args = build_new_session_args("mac-mini", "$(touch pwned)`id`");
+
+    assert_eq!(
+        args,
+        vec![
+            "mac-mini",
+            "-c",
+            "tmux new-session -d -s '$(touch pwned)`id`'",
+        ]
     );
 }
 

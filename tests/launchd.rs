@@ -61,3 +61,40 @@ fn plist_render_includes_environment_variables() {
         "<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>"
     ));
 }
+
+#[test]
+fn plist_render_escapes_xml_in_environment_variable_keys_and_values() {
+    let xml = render(&Definition {
+        label: "com.eternalmac.server".into(),
+        program_arguments: vec!["/opt/homebrew/bin/eternalMac".into()],
+        environment_variables: BTreeMap::from([(
+            String::from("EVIL&KEY<"),
+            String::from("v\"<>&'one"),
+        )]),
+        run_at_load: true,
+        keep_alive: true,
+    });
+
+    assert!(
+        xml.contains("<key>EVIL&amp;KEY&lt;</key><string>v&quot;&lt;&gt;&amp;&apos;one</string>")
+    );
+    assert!(!xml.contains("EVIL&KEY<"));
+}
+
+#[test]
+fn plist_render_neutralizes_structure_breakout_in_program_arguments() {
+    // A value attempting to close the <string> element and inject its own keys
+    // must be fully entity-encoded so the plist structure stays intact.
+    let xml = render(&Definition {
+        label: "com.eternalmac.server".into(),
+        program_arguments: vec!["evil</string><key>Injected</key><string>x".into()],
+        environment_variables: BTreeMap::new(),
+        run_at_load: true,
+        keep_alive: true,
+    });
+
+    assert!(xml.contains(
+        "<string>evil&lt;/string&gt;&lt;key&gt;Injected&lt;/key&gt;&lt;string&gt;x</string>"
+    ));
+    assert!(!xml.contains("</string><key>Injected</key>"));
+}
