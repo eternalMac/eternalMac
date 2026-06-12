@@ -5,7 +5,7 @@ use eternalmac::tooling::ssh::{
     render_managed_host_block, upsert_managed_host_block, validate_ssh_host, validate_ssh_user,
 };
 use eternalmac::tooling::tailscale::{detect_variant, parse_status_json, Variant};
-use eternalmac::tooling::tmux::parse_sessions;
+use eternalmac::tooling::tmux::{list_sessions_failed_without_server, parse_sessions};
 
 #[test]
 fn brew_install_args_split_formulae_and_casks() {
@@ -81,6 +81,26 @@ fn tmux_session_parser_ignores_blank_lines() {
         parse_sessions("default\npairing\n\n"),
         vec!["default".to_string(), "pairing".to_string()]
     );
+}
+
+#[test]
+fn tmux_no_server_stderr_is_recognized_but_real_errors_are_not() {
+    // Benign "no server / no sessions" cases.
+    assert!(list_sessions_failed_without_server(
+        "no server running on /tmp/tmux-501/default"
+    ));
+    assert!(list_sessions_failed_without_server(
+        "error connecting to /private/tmp/tmux-501/default (No such file or directory)"
+    ));
+    assert!(list_sessions_failed_without_server(
+        "failed to connect to server"
+    ));
+    // Genuine failures must NOT be treated as an empty session list.
+    assert!(!list_sessions_failed_without_server(
+        "bash: tmux: command not found"
+    ));
+    assert!(!list_sessions_failed_without_server("lost server"));
+    assert!(!list_sessions_failed_without_server(""));
 }
 
 #[test]
