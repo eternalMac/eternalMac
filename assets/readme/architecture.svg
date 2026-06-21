@@ -1,0 +1,64 @@
+<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">eternalMac architecture</title>
+  <desc id="desc">A MacBook thin client connects through Tailscale to an always-on Mac Mini devserver running Eternal Terminal, tmux, Mutagen, and launchd.</desc>
+  <rect width="1200" height="560" rx="32" fill="#07111F"/>
+  <path d="M0 420C170 350 270 470 410 400C545 333 630 210 775 260C930 315 1005 205 1200 160V560H0V420Z" fill="#0E2238"/>
+  <path d="M120 92C230 28 365 35 470 115C586 203 685 202 820 126C930 64 1060 66 1160 130" stroke="#1D3B5B" stroke-width="2"/>
+
+  <text x="72" y="72" fill="#F7FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="34" font-weight="800">Make your laptop disposable.</text>
+  <text x="72" y="112" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="18">Your Mac Mini keeps the real dev environment alive. Your laptop just attaches.</text>
+
+  <g transform="translate(78 178)">
+    <rect x="0" y="0" width="300" height="230" rx="24" fill="#F8FAFC"/>
+    <rect x="38" y="42" width="224" height="132" rx="12" fill="#0F172A"/>
+    <rect x="70" y="74" width="160" height="16" rx="8" fill="#34D399"/>
+    <rect x="70" y="106" width="125" height="12" rx="6" fill="#93C5FD"/>
+    <rect x="70" y="132" width="178" height="12" rx="6" fill="#CBD5E1"/>
+    <path d="M92 190H208L232 220H68L92 190Z" fill="#CBD5E1"/>
+    <text x="32" y="278" fill="#F7FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="800">MacBook Air</text>
+    <text x="32" y="309" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Sleep, travel, switch networks, reboot.</text>
+    <text x="32" y="333" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Then run eternalMac attach.</text>
+  </g>
+
+  <g transform="translate(460 188)">
+    <rect x="0" y="0" width="280" height="175" rx="26" fill="#123250" stroke="#2C5D89" stroke-width="2"/>
+    <circle cx="140" cy="68" r="44" fill="#60A5FA"/>
+    <path d="M117 71L133 87L164 50" stroke="#07111F" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="62" y="136" fill="#F7FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="25" font-weight="800">Tailscale</text>
+    <text x="54" y="164" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Private tailnet, no open ports</text>
+  </g>
+
+  <path d="M390 276H448" stroke="#60A5FA" stroke-width="5" stroke-linecap="round"/>
+  <path d="M435 261L455 276L435 291" stroke="#60A5FA" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M753 276H842" stroke="#60A5FA" stroke-width="5" stroke-linecap="round"/>
+  <path d="M829 261L849 276L829 291" stroke="#60A5FA" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <g transform="translate(850 148)">
+    <rect x="0" y="0" width="280" height="300" rx="34" fill="#E5E7EB"/>
+    <rect x="64" y="38" width="152" height="190" rx="22" fill="#111827"/>
+    <circle cx="140" cy="80" r="18" fill="#34D399"/>
+    <rect x="96" y="120" width="88" height="12" rx="6" fill="#64748B"/>
+    <rect x="84" y="150" width="112" height="12" rx="6" fill="#64748B"/>
+    <rect x="98" y="180" width="84" height="12" rx="6" fill="#64748B"/>
+    <rect x="108" y="242" width="64" height="14" rx="7" fill="#9CA3AF"/>
+    <text x="14" y="357" fill="#F7FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="800">Mac Mini devserver</text>
+    <text x="14" y="388" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Always-on sessions, files, agents, builds.</text>
+  </g>
+
+  <g transform="translate(82 480)">
+    <rect x="0" y="0" width="245" height="40" rx="20" fill="#123250"/>
+    <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">Eternal Terminal: resilient shell</text>
+  </g>
+  <g transform="translate(348 480)">
+    <rect x="0" y="0" width="205" height="40" rx="20" fill="#123250"/>
+    <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">tmux: named sessions</text>
+  </g>
+  <g transform="translate(574 480)">
+    <rect x="0" y="0" width="202" height="40" rx="20" fill="#123250"/>
+    <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">Mutagen: file sync</text>
+  </g>
+  <g transform="translate(797 480)">
+    <rect x="0" y="0" width="250" height="40" rx="20" fill="#123250"/>
+    <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">launchd: background health</text>
+  </g>
+</svg>
