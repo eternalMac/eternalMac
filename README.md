@@ -1,58 +1,47 @@
 # eternalMac
 
-`eternalMac` turns a Mac Mini into a personal devserver for a laptop.
+Make your laptop disposable.
 
-The current MVP is a macOS-only Rust CLI that wraps:
+`eternalMac` turns a Mac Mini into an always-on devserver your laptop just attaches to. Sleep the laptop, change networks, reboot, or move to another machine; your real dev session keeps running on the Mac Mini.
 
-- Eternal Terminal for resilient remote shell access
-- `tmux` for named remote sessions
-- Mutagen for file sync
-- Tailscale for private reachability
-- `launchd` for always-on background operation
+[![Rust CI](https://github.com/eternalMac/eternalMac/actions/workflows/rust.yml/badge.svg)](https://github.com/eternalMac/eternalMac/actions/workflows/rust.yml)
+[![GitHub release](https://img.shields.io/github/v/release/eternalMac/eternalMac)](https://github.com/eternalMac/eternalMac/releases)
+[![License](https://img.shields.io/github/license/eternalMac/eternalMac)](./LICENSE)
+[![Docs](https://img.shields.io/badge/docs-eternalmac.dev-2563eb)](https://eternalmac.dev/docs)
 
-Product docs: https://eternalmac.dev/docs
+![eternalMac architecture](assets/readme/architecture.svg)
 
-## Current Scope
+![eternalMac attach terminal proof](assets/readme/terminal-proof.svg)
 
-Today, the repo provides:
+## Why
 
-- `eternalMac setup server` to configure a Mac Mini as the devserver
-- `eternalMac setup client` to configure a laptop as the thin client
-- `eternalMac attach [session]` to connect to a named remote `tmux` session
-- `eternalMac attach -n <session>` to create a new remote `tmux` session and attach to it
-- `eternalMac session ...` to list, create, pin, and unpin sessions
-- `eternalMac sync ...` to add and inspect sync pairs
-- `eternalMac status` and `eternalMac doctor` for local health and setup checks
+Modern development sessions are long-running. Agents keep working overnight, builds take time, and context lives in terminals. A laptop is the worst place for that state: it sleeps, disconnects, gets moved, and runs out of battery.
 
-The tool currently assumes Homebrew-managed dependencies and installs or checks:
+`eternalMac` makes the Mac Mini the stable machine and the laptop the thin client.
 
-- `et`
-- `tmux`
-- `mutagen`
-- `tailscale-app`
+- Keep Claude/Codex/OpenCode-style agent sessions running on the Mac Mini.
+- Reconnect to named remote `tmux` sessions with `eternalMac attach`.
+- Sync project files continuously with Mutagen.
+- Reach the Mac Mini privately through Tailscale, without opening public ports.
 
-## Platform
+Under the hood, `eternalMac` wires together Eternal Terminal, `tmux`, Mutagen, Tailscale, and `launchd` behind one CLI.
 
-- macOS only
-- Homebrew-first workflow
-- Single-user personal devserver model
+## Install
 
-The Mac Mini must have Remote Login enabled because Eternal Terminal and Mutagen both rely on SSH for setup and handshaking. Server setup may ask for your macOS password to start Homebrew's root Eternal Terminal service. Client setup asks for the server SSH username, creates a dedicated passwordless `eternalMac` SSH key, authorizes it with a one-time password prompt when needed, and records the remote `etterminal` path used by ET.
-
-## Quick Start
-
-Install from the eternalMac Homebrew tap in one command:
+Install from the eternalMac Homebrew tap:
 
 ```bash
 brew install eternalmac/eternalmac/eternalmac
 ```
 
-No separate `brew tap` command is required for the fully qualified install command above. Homebrew will tap `eternalmac/eternalmac` automatically. If you prefer the shorter install command later, run:
+No separate `brew tap` is required for that fully qualified install command. If you prefer the shorter command later:
 
 ```bash
 brew tap eternalmac/eternalmac
 brew install eternalmac
 ```
+
+## Quick Start
 
 On the Mac Mini:
 
@@ -66,16 +55,44 @@ On the laptop:
 eternalMac setup client --server <tailscale-dns-name>
 ```
 
-Then attach:
+Attach to the default remote session:
 
 ```bash
 eternalMac attach
 ```
 
-Create a fresh remote session and attach immediately:
+Create a named remote session and attach immediately:
 
 ```bash
-eternalMac attach -n feature-branch
+eternalMac attach -n overnight-agent
+```
+
+Full setup and troubleshooting docs:
+
+https://eternalmac.dev/docs
+
+## What It Gives You
+
+### Resilient Remote Sessions
+
+`eternalMac attach` connects through Eternal Terminal into a named `tmux` session on the Mac Mini. If the laptop sleeps or changes networks, reconnect to the same session.
+
+### File Sync
+
+Project sync uses Mutagen:
+
+```bash
+eternalMac sync add project --local ~/project --remote ~/project
+```
+
+If a specific project needs exclusions, pass Mutagen ignore patterns:
+
+```bash
+eternalMac sync add project \
+  --local ~/project \
+  --remote ~/project \
+  --ignore .env \
+  --ignore "secrets/"
 ```
 
 ### DotSync
@@ -84,11 +101,26 @@ During `eternalMac setup client`, you can optionally enable DotSync. DotSync det
 
 DotSync is off by default. It uses a curated allowlist instead of syncing every hidden file in your home directory, and it excludes common auth, cache, log, telemetry, and machine-identity files.
 
-Full setup and troubleshooting docs:
+### Health Checks
 
-https://eternalmac.dev/docs
+```bash
+eternalMac status
+eternalMac doctor
+```
 
-## Command Surface
+`doctor` exits non-zero when it finds issues, making it usable for smoke checks and automation gates.
+
+## Requirements
+
+- Apple Silicon Mac Mini as the server
+- Apple Silicon macOS laptop as the client
+- Homebrew
+- Tailscale account and both machines in the same tailnet
+- macOS Remote Login enabled on the Mac Mini
+
+The published Homebrew formula is currently Apple Silicon only. Intel Mac support is not promised yet.
+
+## Commands
 
 ```bash
 eternalMac setup server
@@ -110,7 +142,23 @@ eternalMac status
 eternalMac doctor
 ```
 
-`eternalMac doctor` exits non-zero when it prints issues, making it suitable for release smoke checks and automation gates.
+## FAQ
+
+### Why not just SSH into tmux?
+
+You can. `eternalMac` is for the setup you would otherwise keep rebuilding by hand: resilient shell transport, named sessions, file sync, private reachability, launchd agents, status, and doctor checks.
+
+### Why Tailscale?
+
+The Mac Mini should be reachable from anywhere without opening public SSH ports. Tailscale gives `eternalMac` a private network path and stable DNS name.
+
+### Does project sync exclude secrets by default?
+
+No. Normal project sync is user-directed full-tree sync. If you ask to sync a project, `eternalMac` syncs that project. Use `--ignore` for project-specific exclusions. DotSync is different: it is curated and excludes common auth/cache/machine-state files by default.
+
+### Does this replace cloud dev environments?
+
+No. It is a personal devserver workflow for people who already have a Mac Mini and want their own hardware to be the always-on machine.
 
 ## Development
 
@@ -130,6 +178,12 @@ Run the smoke check:
 
 ```bash
 bash scripts/smoke/bootstrap.sh
+```
+
+Check repository hygiene:
+
+```bash
+bash scripts/check-no-tracked-ignored.sh
 ```
 
 ## Packaging
