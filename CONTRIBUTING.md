@@ -38,6 +38,12 @@ Run the smoke script:
 bash scripts/smoke/bootstrap.sh
 ```
 
+Check that no ignored local artifacts are tracked:
+
+```bash
+bash scripts/check-no-tracked-ignored.sh
+```
+
 ## Change Expectations
 
 If you change behavior:
@@ -69,6 +75,7 @@ Prefer concise conventional-style commit messages such as:
 - `src/tooling/` contains wrappers and parsers for external tools
 - `tests/` contains integration-focused behavior tests
 - `scripts/smoke/` contains lightweight smoke checks
+- root `docs/` is ignored and reserved for local planning, findings, and handoff notes; do not commit files from it
 
 ## Scope Discipline
 

@@ -35,6 +35,9 @@ jobs:
       - name: Install Rust components
         run: rustup component add rustfmt clippy
 
+      - name: Check repository hygiene
+        run: bash scripts/check-no-tracked-ignored.sh
+
       - name: Cache Cargo registry and target
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
