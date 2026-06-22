@@ -1,8 +1,8 @@
-<svg width="1200" height="560" viewBox="0 0 1200 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+<svg width="1200" height="660" viewBox="0 0 1200 660" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
   <title id="title">eternalMac architecture</title>
   <desc id="desc">A MacBook thin client connects through Tailscale to an always-on Mac Mini devserver running Eternal Terminal, tmux, Mutagen, and launchd.</desc>
-  <rect width="1200" height="560" rx="32" fill="#07111F"/>
-  <path d="M0 420C170 350 270 470 410 400C545 333 630 210 775 260C930 315 1005 205 1200 160V560H0V420Z" fill="#0E2238"/>
+  <rect width="1200" height="660" rx="32" fill="#07111F"/>
+  <path d="M0 500C170 430 270 550 410 480C545 413 630 290 775 340C930 395 1005 285 1200 240V660H0V500Z" fill="#0E2238"/>
   <path d="M120 92C230 28 365 35 470 115C586 203 685 202 820 126C930 64 1060 66 1160 130" stroke="#1D3B5B" stroke-width="2"/>
 
   <text x="72" y="72" fill="#F7FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="34" font-weight="800">Make your laptop disposable.</text>
@@ -45,19 +45,19 @@
     <text x="14" y="388" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Always-on sessions, files, agents, builds.</text>
   </g>
 
-  <g transform="translate(82 480)">
+  <g transform="translate(82 590)">
     <rect x="0" y="0" width="245" height="40" rx="20" fill="#123250"/>
     <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">Eternal Terminal: resilient shell</text>
   </g>
-  <g transform="translate(348 480)">
+  <g transform="translate(348 590)">
     <rect x="0" y="0" width="205" height="40" rx="20" fill="#123250"/>
     <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">tmux: named sessions</text>
   </g>
-  <g transform="translate(574 480)">
+  <g transform="translate(574 590)">
     <rect x="0" y="0" width="202" height="40" rx="20" fill="#123250"/>
     <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">Mutagen: file sync</text>
   </g>
-  <g transform="translate(797 480)">
+  <g transform="translate(797 590)">
     <rect x="0" y="0" width="250" height="40" rx="20" fill="#123250"/>
     <text x="22" y="26" fill="#D8F3FF" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700">launchd: background health</text>
   </g>
