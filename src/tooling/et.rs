@@ -52,8 +52,12 @@ pub fn build_list_sessions_args_with_options(
     server_ssh_user: Option<&str>,
     server_etterminal_path: Option<&str>,
 ) -> Vec<String> {
+    // Capture tmux's exit status and propagate it, so a failed `tmux
+    // list-sessions` surfaces as a command failure instead of being masked as
+    // an empty session list (the trailing `printf` would otherwise always
+    // make the remote command succeed).
     let command = format!(
-        "printf '{}\\n'; tmux list-sessions -F '#S'; printf '{}\\n'; exit",
+        "printf '{}\\n'; tmux list-sessions -F '#S'; status=$?; printf '{}\\n'; exit $status",
         SESSION_LIST_BEGIN_MARKER, SESSION_LIST_END_MARKER
     );
     build_remote_command_args_with_options(
