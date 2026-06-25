@@ -77,9 +77,9 @@ function validatePng(bytes, label, spec) {
   }
 }
 
-async function existing(path, label) {
+async function existing(path, label, options) {
   try {
-    return await readFile(path);
+    return await readFile(path, options);
   } catch (error) {
     if (error?.code === 'ENOENT') {
       throw new Error(`${label} is missing`);
@@ -88,8 +88,8 @@ async function existing(path, label) {
   }
 }
 
-async function render(svgPath, width) {
-  const svg = await readFile(svgPath, 'utf8');
+async function render(svgPath, width, label = svgPath) {
+  const svg = await existing(svgPath, label, 'utf8');
   const renderer = new Resvg(svg, {
     fitTo: { mode: 'width', value: width },
     font: {
@@ -125,6 +125,7 @@ export async function processSocialAssets({
 
   for (const spec of manifest) {
     const label = `${spec.name}.png`;
+    const svgLabel = `${spec.name}.svg`;
     const publicLabel = `website/public/socialAssets/${label}`;
     const svgPath = join(sourceDir, `${spec.name}.svg`);
     const sourcePath = join(sourceDir, label);
@@ -136,7 +137,7 @@ export async function processSocialAssets({
 
     try {
       if (mode === 'write') {
-        const rendered = await render(svgPath, spec.width);
+        const rendered = await render(svgPath, spec.width, svgLabel);
         validatePng(rendered, label, spec);
         await write(sourcePath, rendered);
         await write(publicPath, rendered);
@@ -151,7 +152,7 @@ export async function processSocialAssets({
         continue;
       }
 
-      const expected = await render(svgPath, spec.width);
+      const expected = await render(svgPath, spec.width, svgLabel);
       validatePng(expected, label, spec);
 
       if (!source.equals(expected)) {
