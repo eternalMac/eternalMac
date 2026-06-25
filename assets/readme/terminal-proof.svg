@@ -7,22 +7,22 @@
   <circle cx="95" cy="77" r="8" fill="#F87171"/>
   <circle cx="124" cy="77" r="8" fill="#FBBF24"/>
   <circle cx="153" cy="77" r="8" fill="#34D399"/>
-  <text x="188" y="83" fill="#CBD5E1" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="16">MacBook Air -> eternalMac -> Mac Mini</text>
+  <text x="188" y="83" fill="#CBD5E1" font-family="IBM Plex Mono" font-size="16">MacBook Air -> eternalMac -> Mac Mini</text>
 
-  <text x="92" y="155" fill="#94A3B8" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22"># new coffee shop, different network, laptop just woke up</text>
-  <text x="92" y="205" fill="#60A5FA" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="24">$</text>
-  <text x="124" y="205" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="24">eternalMac attach -n overnight-agent</text>
+  <text x="92" y="155" fill="#94A3B8" font-family="IBM Plex Mono" font-size="22"># new coffee shop, different network, laptop just woke up</text>
+  <text x="92" y="205" fill="#60A5FA" font-family="IBM Plex Mono" font-size="24">$</text>
+  <text x="124" y="205" fill="#E5E7EB" font-family="IBM Plex Mono" font-size="24">eternalMac attach -n overnight-agent</text>
 
-  <text x="92" y="260" fill="#34D399" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22">connected: mac-mini.tailnet.ts.net</text>
-  <text x="92" y="300" fill="#34D399" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22">session: overnight-agent</text>
-  <text x="92" y="340" fill="#A7F3D0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22">codex: still running task 17/42</text>
-  <text x="92" y="380" fill="#A7F3D0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22">mutagen: project files are in sync</text>
-  <text x="92" y="420" fill="#E5E7EB" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace" font-size="22">tmux: exactly where you left off</text>
+  <text x="92" y="260" fill="#34D399" font-family="IBM Plex Mono" font-size="22">connected: mac-mini.tailnet.ts.net</text>
+  <text x="92" y="300" fill="#34D399" font-family="IBM Plex Mono" font-size="22">session: overnight-agent</text>
+  <text x="92" y="340" fill="#A7F3D0" font-family="IBM Plex Mono" font-size="22">codex: still running task 17/42</text>
+  <text x="92" y="380" fill="#A7F3D0" font-family="IBM Plex Mono" font-size="22">mutagen: project files are in sync</text>
+  <text x="92" y="420" fill="#E5E7EB" font-family="IBM Plex Mono" font-size="22">tmux: exactly where you left off</text>
 
   <rect x="785" y="150" width="276" height="250" rx="22" fill="#101C2D" stroke="#264360" stroke-width="2"/>
-  <text x="823" y="202" fill="#F8FAFC" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="27" font-weight="800">The money shot</text>
-  <text x="823" y="244" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17">Sleep the laptop.</text>
-  <text x="823" y="278" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17">Change networks.</text>
-  <text x="823" y="312" fill="#B7C6D8" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17">Attach again.</text>
-  <text x="823" y="358" fill="#34D399" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="17" font-weight="700">Your session survived.</text>
+  <text x="823" y="202" fill="#F8FAFC" font-family="Inter" font-size="27" font-weight="800">The money shot</text>
+  <text x="823" y="244" fill="#B7C6D8" font-family="Inter" font-size="17">Sleep the laptop.</text>
+  <text x="823" y="278" fill="#B7C6D8" font-family="Inter" font-size="17">Change networks.</text>
+  <text x="823" y="312" fill="#B7C6D8" font-family="Inter" font-size="17">Attach again.</text>
+  <text x="823" y="358" fill="#34D399" font-family="Inter" font-size="17" font-weight="700">Your session survived.</text>
 </svg>
