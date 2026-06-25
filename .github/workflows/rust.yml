@@ -60,3 +60,38 @@ jobs:
 
       - name: Run smoke bootstrap
         run: bash scripts/smoke/bootstrap.sh
+
+  social-assets:
+    name: Verify social assets
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: website
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install website dependencies
+        run: npm ci
+
+      - name: Run renderer contract tests
+        run: npm run test:social-assets
+
+      - name: Verify generated social assets
+        run: npm run assets:check
+
+      - name: Build the website
+        run: npm run build
+
+      - name: Ensure the build did not change tracked social assets
+        run: git diff --exit-code -- public/socialAssets
