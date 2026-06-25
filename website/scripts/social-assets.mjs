@@ -20,19 +20,19 @@ function fontFiles() {
   return [
     join(
       SCRIPT_ROOT,
-      'website/node_modules/@fontsource/inter/files/inter-latin-400-normal.woff',
+      'website/node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf',
     ),
     join(
       SCRIPT_ROOT,
-      'website/node_modules/@fontsource/inter/files/inter-latin-700-normal.woff',
+      'website/node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf',
     ),
     join(
       SCRIPT_ROOT,
-      'website/node_modules/@fontsource/inter/files/inter-latin-800-normal.woff',
+      'website/node_modules/@expo-google-fonts/inter/800ExtraBold/Inter_800ExtraBold.ttf',
     ),
     join(
       SCRIPT_ROOT,
-      'website/node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff',
+      'website/node_modules/@expo-google-fonts/ibm-plex-mono/400Regular/IBMPlexMono_400Regular.ttf',
     ),
   ];
 }

@@ -19,8 +19,8 @@
     "astro": "^7.0.3"
   },
   "devDependencies": {
-    "@fontsource/ibm-plex-mono": "5.2.7",
-    "@fontsource/inter": "5.2.8",
+    "@expo-google-fonts/ibm-plex-mono": "0.4.1",
+    "@expo-google-fonts/inter": "0.4.2",
     "@resvg/resvg-js": "2.6.2"
   }
 }

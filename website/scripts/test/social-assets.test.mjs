@@ -13,11 +13,11 @@ const svg = `
   <rect width="1200" height="630" fill="#07111f"/>
 </svg>`;
 
-async function createFixture() {
+async function createFixture(svgContent = svg) {
   const root = await mkdtemp(join(tmpdir(), 'eternalmac-social-assets-'));
   await mkdir(join(root, 'assets/readme'), { recursive: true });
   await mkdir(join(root, 'website/public'), { recursive: true });
-  await writeFile(join(root, 'assets/readme/example.svg'), svg.trim());
+  await writeFile(join(root, 'assets/readme/example.svg'), svgContent.trim());
   await writeFile(
     join(root, 'assets/readme/ALT_TEXT.md'),
     '# Social asset alt text\n\n## example.png\n\nA dark example social card.\n',
@@ -36,6 +36,25 @@ test('write mode renders a source PNG and matching public copy', async () => {
   );
   assert.equal(source.subarray(1, 4).toString('ascii'), 'PNG');
   assert.deepEqual(publicCopy, source);
+});
+
+test('write mode renders text with bundled fonts', async () => {
+  const textSvg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#07111f"/>
+  <text x="120" y="330" fill="#ffffff" font-family="Inter" font-size="112" font-weight="700">Eternal Mac</text>
+</svg>`;
+  const blankRoot = await createFixture();
+  const textRoot = await createFixture(textSvg);
+
+  await processSocialAssets({ root: blankRoot, manifest: MANIFEST, mode: 'write' });
+  await processSocialAssets({ root: textRoot, manifest: MANIFEST, mode: 'write' });
+
+  const blank = await readFile(join(blankRoot, 'assets/readme/example.png'));
+  const text = await readFile(join(textRoot, 'assets/readme/example.png'));
+
+  assert.notDeepEqual(text, blank);
+  assert.ok(text.length > blank.length);
 });
 
 test('write mode reports missing source SVGs with a stable label', async () => {
