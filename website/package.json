@@ -4,14 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "assets:write": "node scripts/render-social-assets.mjs --write",
+    "assets:sync": "node scripts/render-social-assets.mjs --sync-public",
+    "assets:check": "node scripts/render-social-assets.mjs --check",
+    "test:social-assets": "node --test scripts/test/social-assets.test.mjs",
     "dev": "astro dev --host 127.0.0.1",
+    "prebuild": "npm run assets:sync",
     "build": "astro build",
-    "docs:build": "astro build",
+    "docs:build": "npm run assets:sync && astro build",
     "preview": "astro preview --host 127.0.0.1"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.41.1",
     "astro": "^7.0.3"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@fontsource/ibm-plex-mono": "5.2.7",
+    "@fontsource/inter": "5.2.8",
+    "@resvg/resvg-js": "2.6.2"
+  }
 }
