@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -36,6 +36,19 @@ test('write mode renders a source PNG and matching public copy', async () => {
   );
   assert.equal(source.subarray(1, 4).toString('ascii'), 'PNG');
   assert.deepEqual(publicCopy, source);
+});
+
+test('write mode reports missing source SVGs with a stable label', async () => {
+  const root = await createFixture();
+  await rm(join(root, 'assets/readme/example.svg'));
+
+  await assert.rejects(
+    processSocialAssets({ root, manifest: MANIFEST, mode: 'write' }),
+    (error) => {
+      assert.equal(error.message, 'example.svg is missing');
+      return true;
+    },
+  );
 });
 
 test('check mode rejects a stale committed PNG without rewriting it', async () => {
