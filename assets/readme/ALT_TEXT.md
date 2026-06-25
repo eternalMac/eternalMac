@@ -16,10 +16,8 @@ invalid generated assets. The EternalMac website is the canonical social host:
 
 ## architecture.png
 
-Diagram showing a MacBook thin client connecting through Tailscale to an
-always-on Mac mini running Eternal Terminal, tmux, Mutagen, and launchd.
+Diagram showing a MacBook thin client connecting through Tailscale to an always-on Mac mini running Eternal Terminal, tmux, Mutagen, and launchd.
 
 ## terminal-proof.png
 
-Terminal demonstration of `eternalMac attach` reconnecting to an overnight
-agent session on a Mac mini after a laptop wakes on a different network.
+Terminal demonstration of eternalMac attach reconnecting to an overnight agent session on a Mac mini after a laptop wakes on a different network.
