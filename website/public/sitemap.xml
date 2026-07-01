@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://eternalmac.dev/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/getting-started/installation/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/getting-started/server-setup/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/getting-started/client-setup/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/usage/attach/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/usage/sessions/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/usage/sync/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/operations/status-and-doctor/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/operations/troubleshooting/</loc>
+  </url>
+  <url>
+    <loc>https://eternalmac.dev/docs/reference/commands/</loc>
+  </url>
+</urlset>

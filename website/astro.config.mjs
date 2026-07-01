@@ -9,6 +9,13 @@ export default defineConfig({
       logo: {
         src: './public/logo.svg',
       },
+      favicon: '/favicon.ico',
+      head: [
+        {
+          tag: 'link',
+          attrs: { rel: 'sitemap', href: '/sitemap.xml' },
+        },
+      ],
       social: [
         {
           icon: 'github',
