@@ -10,7 +10,9 @@ use crate::tooling::et::{
     build_new_session_args_with_options as build_remote_new_session_args,
     SESSION_LIST_BEGIN_MARKER, SESSION_LIST_END_MARKER,
 };
-use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
+use crate::tooling::tmux::{
+    list_sessions_args, list_sessions_failed_without_server, new_session_args, parse_sessions,
+};
 
 fn run_checked<R: Runner>(runner: &R, program: &str, args: &[String]) -> Result<Output> {
     let output = runner.run(program, args)?;
@@ -84,12 +86,20 @@ pub fn list_with<R: Runner>(store: &Store, runner: &R) -> Result<Vec<String>> {
             server_ssh_user,
             server_etterminal_path,
         } => {
-            let output = run_checked(
-                runner,
-                "et",
-                &build_remote_list_sessions_args(server, server_ssh_user, server_etterminal_path),
-            )?;
-            Ok(parse_marked_remote_sessions(&output.stdout))
+            let args =
+                build_remote_list_sessions_args(server, server_ssh_user, server_etterminal_path);
+            let output = runner.run("et", &args)?;
+            if output.success {
+                Ok(parse_marked_remote_sessions(&output.stdout))
+            } else if list_sessions_failed_without_server(&output.stderr) {
+                // No tmux server / no sessions yet on the paired server: a
+                // legitimate empty result, mirroring the local server path.
+                Ok(Vec::new())
+            } else {
+                // A real remote failure (e.g. tmux missing, connection error):
+                // surface it instead of masking it as an empty list.
+                Err(command_failed("et", &args, &output))
+            }
         }
     }
 }

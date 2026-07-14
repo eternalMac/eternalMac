@@ -8,7 +8,9 @@ use crate::model::config::Role;
 use crate::model::state::State;
 use crate::process::runner::{Output, Runner};
 use crate::tooling::tailscale::{parse_status_json, status_args};
-use crate::tooling::tmux::{list_sessions_args, new_session_args, parse_sessions};
+use crate::tooling::tmux::{
+    list_sessions_args, list_sessions_failed_without_server, new_session_args, parse_sessions,
+};
 
 #[derive(Debug, Clone)]
 pub struct ServerInput {
@@ -62,19 +64,6 @@ fn command_failed(program: &str, args: &[String], stderr: &str) -> anyhow::Error
     }
 
     anyhow!(message)
-}
-
-fn tmux_list_sessions_failed_without_server(stderr: &str) -> bool {
-    let normalized = stderr.trim().to_ascii_lowercase();
-    if normalized.is_empty() {
-        return false;
-    }
-
-    normalized.contains("no server running on")
-        || normalized.contains("failed to connect to server")
-        || (normalized.contains("error connecting to")
-            && (normalized.contains("no such file or directory")
-                || normalized.contains("connection refused")))
 }
 
 fn current_unix_seconds() -> Result<i64> {
@@ -141,7 +130,7 @@ pub fn run_once<R: Runner>(_paths: &Paths, store: &Store, runner: &R) -> Result<
     let tmux_output = runner.run("tmux", &tmux_list_args)?;
     let mut sessions = if tmux_output.success {
         parse_sessions(&tmux_output.stdout)
-    } else if tmux_list_sessions_failed_without_server(&tmux_output.stderr) {
+    } else if list_sessions_failed_without_server(&tmux_output.stderr) {
         vec![]
     } else {
         return Err(command_failed("tmux", &tmux_list_args, &tmux_output.stderr));

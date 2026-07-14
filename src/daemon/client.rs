@@ -57,14 +57,8 @@ fn status_is_active(status: &str) -> bool {
         return false;
     }
 
-    let has_explicit_healthy_marker = ["watching for changes", "idle", "synchronized"]
-        .iter()
-        .any(|marker| normalized.contains(marker));
-    if !has_explicit_healthy_marker {
-        return false;
-    }
-
-    ![
+    // Genuine problem states: a sync reporting any of these is degraded.
+    let has_problem_marker = [
         "paused",
         "halted",
         "problem",
@@ -74,12 +68,30 @@ fn status_is_active(status: &str) -> bool {
         "disconnected",
         "reconnect",
         "reconnecting",
-        "scanning",
-        "staging",
-        "synchronizing",
-        "applying",
-        "waiting",
         "conflict",
+    ]
+    .iter()
+    .any(|marker| normalized.contains(marker));
+    if has_problem_marker {
+        return false;
+    }
+
+    // Healthy steady states plus normal in-progress transfer phases. Transfer
+    // phases are routine operation, not degradation; classifying them as
+    // degraded makes health flap on every sync. "Scanning files" and "Staging
+    // files on beta" were observed live (mutagen 0.18.1); the rest are
+    // mutagen's documented transfer lifecycle.
+    [
+        "watching for changes",
+        "idle",
+        "synchronized",
+        "scanning",
+        "reconciling",
+        "staging",
+        "transitioning",
+        "applying",
+        "saving",
+        "synchronizing",
     ]
     .iter()
     .any(|marker| normalized.contains(marker))

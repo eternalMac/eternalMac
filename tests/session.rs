@@ -172,10 +172,46 @@ fn session_list_uses_et_against_paired_server_when_client_config_exists() {
             "et".into(),
             build_remote_command_args(
                 "mac-mini",
-                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit"
+                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; status=$?; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit $status"
             )
         )]
     );
+}
+
+#[test]
+fn session_list_returns_empty_when_remote_has_no_tmux_server() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, None, Some(vec![]));
+    // tmux exits non-zero with this stderr when no server is running
+    // (observed with tmux 3.6b); this is a legitimate empty result.
+    let runner = FakeRunner::failure_with_streams(
+        "__ETERNALMAC_SESSIONS_BEGIN__\n__ETERNALMAC_SESSIONS_END__\n",
+        "error connecting to /private/tmp/tmux-501/default (No such file or directory)",
+    );
+
+    let sessions = list_with(&store, &runner).unwrap();
+
+    assert!(sessions.is_empty());
+}
+
+#[test]
+fn session_list_errors_on_real_remote_failure_instead_of_reporting_empty() {
+    let tempdir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(tempdir.path().to_path_buf());
+    let store = Store::new(paths);
+    save_config(&store, None, Some(vec![]));
+    // A genuine failure (e.g. tmux not installed on the server) must surface,
+    // not be masked as an empty session list.
+    let runner = FakeRunner::failure_with_streams(
+        "__ETERNALMAC_SESSIONS_BEGIN__\n__ETERNALMAC_SESSIONS_END__\n",
+        "bash: tmux: command not found",
+    );
+
+    let result = list_with(&store, &runner);
+
+    assert!(result.is_err());
 }
 
 #[test]
@@ -205,7 +241,7 @@ fn session_list_uses_persisted_terminal_path() {
                 "mac-mini",
                 Some("devuser"),
                 Some("/opt/homebrew/bin/etterminal"),
-                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit"
+                "printf '__ETERNALMAC_SESSIONS_BEGIN__\\n'; tmux list-sessions -F '#S'; status=$?; printf '__ETERNALMAC_SESSIONS_END__\\n'; exit $status"
             )
         )]
     );
